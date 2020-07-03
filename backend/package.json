@@ -12,7 +12,7 @@
     },
     "engines": {
         "yarn": "^1.10.1",
-        "node": ">=10.18.0"
+        "node": ">=12.18.2"
     },
     "devDependencies": {
         "@types/express": "^4.17.6",
