@@ -3,10 +3,7 @@ import { parse, HTMLElement } from 'node-html-parser';
 import { Context } from '../context';
 
 export const parseEmail = (context: Context, message: gmail_v1.Schema$Message) => {
-    if (message.payload.mimeType === 'multipart/mixed') {
-        return message.payload.parts.map(parseMessagePart.bind(null, context));
-    }
-    return {};
+    return parseMessagePart(context, message.payload);
 };
 
 type DetectedLink = {
@@ -24,32 +21,37 @@ const linkAnalyzer = (urlRegex: RegExp, linkElement: HTMLElement): string => {
 };
 
 const linkAnalysisConfigs = [
+    // {
+    //     type: 'googleDrive',
+    //     urlRegex: /http/,
+    // },
     {
-        type: 'googleDrive',
-        urlRegex: /http/,
+        type: 'googleDocs',
+        urlRegex: /https:\/\/docs.google.com\/document\/d/,
     },
 ];
 
-const parseMessagePart = (context: Context, messagePart: gmail_v1.Schema$MessagePart): Array<DetectedLink> => {
-    return messagePart.parts.flatMap((part) => {
-        if (part.mimeType === 'text/html') {
-            const buff = new Buffer(part.body.data, 'base64');
-            const text = buff.toString('ascii');
-            const rootElement = parse(text);
-            const links = rootElement.querySelectorAll('a');
-            const detectedLinks = linkAnalysisConfigs.flatMap((config) =>
-                links
-                    .map((link) => linkAnalyzer(config.urlRegex, link))
-                    .filter(Boolean)
-                    .map(
-                        (match) =>
-                            ({ href: match, type: config.type, firstCharPos: text.indexOf(match) } as DetectedLink),
-                    ),
-            );
-            return detectedLinks;
-        } else if (part.mimeType === 'multipart/mixed' || part.mimeType === 'multipart/related') {
-            return part.parts.flatMap((part: gmail_v1.Schema$MessagePart) => parseMessagePart(context, part));
-        }
-        return [];
-    });
+const parseMessagePart = (context: Context, part: gmail_v1.Schema$MessagePart): Array<DetectedLink> => {
+    if (part.mimeType === 'text/html') {
+        const buff = Buffer.from(part.body.data, 'base64');
+        const text = buff.toString('ascii');
+        const rootElement = parse(text);
+        const links = rootElement.querySelectorAll('a');
+        const detectedLinks = linkAnalysisConfigs.flatMap((config) =>
+            links
+                .map((link) => linkAnalyzer(config.urlRegex, link))
+                .filter(Boolean)
+                .map(
+                    (match) => ({ href: match, type: config.type, firstCharPos: text.indexOf(match) } as DetectedLink),
+                ),
+        );
+        return detectedLinks;
+    } else if (
+        part.mimeType === 'multipart/mixed' ||
+        part.mimeType === 'multipart/related' ||
+        part.mimeType == 'multipart/alternative'
+    ) {
+        return part.parts.flatMap((part: gmail_v1.Schema$MessagePart) => parseMessagePart(context, part));
+    }
+    return [];
 };

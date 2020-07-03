@@ -1,5 +1,6 @@
 import program from 'commander';
 import { generateAuthUrl, getTokens } from '../cmd/generate_auth_url';
+import { checkDriveLink } from '../cmd/check_drive_link';
 import { listMessages, getMessage } from '../clients/gmail';
 import { createContext } from '../context';
 import { readFileSync, writeFileSync } from 'fs';
@@ -60,6 +61,16 @@ program
         const message: gmail_v1.Schema$Message = JSON.parse(readFileSync(messagePath).toString());
         const processResults = parseEmail(context, message);
         console.log('Message parse results', JSON.stringify(processResults));
+    });
+
+program
+    .command('url-check')
+    .description('check a url to see if it is accessible')
+    .requiredOption('-u, --url <url>', 'url to check')
+    .action(async ({ url }) => {
+        const context = createContext();
+        const linkStatus = await checkDriveLink(context, url);
+        console.log(`Link result for ${url} is ${JSON.stringify(linkStatus)}`);
     });
 
 program.parse(process.argv);
