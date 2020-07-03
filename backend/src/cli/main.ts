@@ -1,6 +1,7 @@
 import program from 'commander';
 import { generateAuthUrl, getTokens } from '../cmd/generate_auth_url';
 import { checkDriveLink } from '../cmd/check_drive_link';
+import { syncMailbox } from '../cmd/sync_mailbox';
 import { listMessages, getMessage } from '../clients/gmail';
 import { createContext } from '../context';
 import { readFileSync, writeFileSync } from 'fs';
@@ -71,6 +72,24 @@ program
         const context = createContext();
         const linkStatus = await checkDriveLink(context, url);
         console.log(`Link result for ${url} is ${JSON.stringify(linkStatus)}`);
+    });
+
+program
+    .command('sync')
+    .description('sync a gmail mailbox')
+    .option('-t, --token <token_path>', 'path to token.json file', join(homedir(), 'gmail_token.json'))
+    .option(
+        '-d, --directory_path <directory_path>',
+        'where to store the messages we cache',
+        join(homedir(), 'message_cache'),
+    )
+    .action(async ({ directory_path: directoryPath, token: tokenPath }) => {
+        const gmailCredentials = JSON.parse(readFileSync(tokenPath).toString());
+        const context = createContext();
+        const gmailContext = { ...context, gmailCredentials };
+        await syncMailbox(gmailContext, 'matt.sprague@gmail.com', directoryPath, {
+            maxPages: 1,
+        });
     });
 
 program.parse(process.argv);

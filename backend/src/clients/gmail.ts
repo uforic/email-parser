@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { Context, GmailContext } from '../context';
+import { assertDefined } from '../utils';
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 
@@ -37,23 +38,14 @@ const getGmailClient = (context: GmailContext) => {
     return gmailClient;
 };
 
-export const listMessages = async (context: GmailContext, userId: string) => {
+export const listMessages = async (context: GmailContext, userId: string, pageToken?: string) => {
     const gmailClient = getGmailClient(context);
     const initialPayload = gmailClient.users.messages.list({
         userId: userId,
+        pageToken,
     });
     const response = await initialPayload;
-    const handlePage = (resp: typeof response) => {
-        const nextEmails = gmailClient.users.messages.list({
-            userId: userId,
-            pageToken: resp.data.nextPageToken,
-        });
-        return {
-            messages: resp.data.messages,
-            next: async () => handlePage(await nextEmails),
-        };
-    };
-    return handlePage(response);
+    return response.data;
 };
 
 export const getMessage = async (context: GmailContext, userId: string, messageId: string) => {
