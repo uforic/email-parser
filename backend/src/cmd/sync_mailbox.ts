@@ -4,6 +4,7 @@ import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { assertDefined } from '../utils';
 import { JobExecutor } from '../jobs/JobExecutor';
+import { mailboxEmitter } from '../events/EventEmitter';
 
 export const syncMailbox = async (
     context: GmailContext,
@@ -24,10 +25,12 @@ export const syncMailbox = async (
         async ({ id }) => {
             const messagePath = join(cacheDirectory, id + '.json');
             if (existsSync(messagePath)) {
+                mailboxEmitter.messageDownloaded(id);
                 return;
             }
             const message = await getMessage(context, userId, id);
             writeFileSync(messagePath, JSON.stringify(message));
+            mailboxEmitter.messageDownloaded(id);
         },
         { maxConcurrentJobs: 100 },
     );
@@ -40,10 +43,14 @@ export const syncMailbox = async (
             gmailGetExecutor.addJob({ id });
         });
         if (options.maxPages && pageCount >= options.maxPages) {
+            mailboxEmitter.syncCompleted();
             return;
         }
+        mailboxEmitter.messagePageDownloaded(messages.length);
         if (nextPageToken) {
             gmailListExecutor.addJob({ userId, pageToken: nextPageToken });
+        } else {
+            mailboxEmitter.syncCompleted();
         }
     });
 

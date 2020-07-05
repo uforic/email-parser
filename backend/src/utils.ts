@@ -1,6 +1,6 @@
 import { AssertionError } from 'assert';
 export function assertDefined(condition: any): asserts condition {
-    if (!condition) {
+    if (condition == null) {
         throw new AssertionError();
     }
 }

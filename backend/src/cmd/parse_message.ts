@@ -1,7 +1,7 @@
 import { gmail_v1 } from 'googleapis';
 import { parse, HTMLElement } from 'node-html-parser';
 import { Context } from '../context';
-import { assertDefined, isDefined } from '../utils';
+import { isDefined } from '../utils';
 
 export const parseEmail = (context: Context, message: gmail_v1.Schema$Message) => {
     if (!message.payload) {
@@ -10,7 +10,7 @@ export const parseEmail = (context: Context, message: gmail_v1.Schema$Message) =
     return parseMessagePart(context, message.payload);
 };
 
-type DetectedLink = {
+export type DetectedLink = {
     type: string;
     href: string;
     firstCharPos: number;
@@ -41,7 +41,11 @@ const linkAnalysisConfigs = [
 const parseMessagePart = (context: Context, part: gmail_v1.Schema$MessagePart): Array<DetectedLink> => {
     if (part.mimeType === 'text/html') {
         const emailBody = part?.body?.data;
-        assertDefined(emailBody);
+        // have noticed that some messages don't have data, specifically when they are attachments
+        if (!emailBody) {
+            return [];
+        }
+
         const buff = Buffer.from(emailBody, 'base64');
         const text = buff.toString('ascii');
         const rootElement = parse(text);

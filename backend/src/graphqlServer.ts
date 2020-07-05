@@ -1,8 +1,13 @@
 import { ApolloServer, gql } from 'apollo-server-express';
 import express, { Request } from 'express';
-import { getOauth2Url, getToken, listMessages } from '../clients/gmail';
-import { createContext } from '../context';
+import { getOauth2Url, getToken, listMessages } from './clients/gmail';
+import { createContext } from './context';
 import session from 'express-session';
+import { state, loadMessage, loadMetadata } from './store';
+import { syncMailbox } from './cmd/sync_mailbox';
+import { homedir } from 'os';
+import { join } from 'path';
+import './events/MessageDownloadListener';
 
 const serverContext = createContext();
 
@@ -22,8 +27,35 @@ const typeDefs = gql`
         isCompleted: Boolean!
     }
 
+    type LinkDetection {
+        type: String!
+        href: String!
+        firstCharPos: Int!
+    }
+
+    # union DetectionResult = LinkDetection
+
+    type Result {
+        messageId: String!
+        results: [LinkDetection!]!
+    }
+
+    type ResultsPage {
+        results: [Result!]!
+        nextToken: String
+    }
+
+    type MessagePreview {
+        subject: String!
+        from: String!
+        to: String!
+        snippet: String!
+    }
+
     type MailboxQueries {
         getMailboxSyncStatus: MailboxSyncStatus!
+        getResultsPage(token: String): ResultsPage!
+        getMessagePreview(messageId: String!): MessagePreview
     }
 
     # The "Query" type is special: it lists all of the available queries that
@@ -35,6 +67,7 @@ const typeDefs = gql`
     }
 `;
 
+const PAGE_SIZE = 5;
 // Resolvers define the technique for fetching the types defined in the
 // schema. This resolver retrieves books from the "books" array above.
 const resolvers = {
@@ -42,10 +75,27 @@ const resolvers = {
         mailbox: () => ({
             getMailboxSyncStatus: () => {
                 return {
-                    numMessagesSeen: 50,
-                    numMessagesDownloaded: 500,
-                    isCompleted: true,
+                    numMessagesSeen: state.numberOfMessagesSeen,
+                    numMessagesDownloaded: state.numberOfMessagesDownloaded,
+                    isCompleted: state.syncCompleted,
                 };
+            },
+            getResultsPage: (args: { token?: string }) => {
+                let results = state.results.slice(0, PAGE_SIZE);
+                let pageEnd = PAGE_SIZE;
+                if (args.token) {
+                    const index = state.results.findIndex((result) => result.messageId === args.token);
+                    pageEnd = index + PAGE_SIZE;
+                    results = state.results.slice(index, pageEnd);
+                }
+                return {
+                    results,
+                    nextToken: state.results[pageEnd + 1]?.messageId,
+                };
+            },
+            getMessagePreview: async (args: { messageId: string }) => {
+                const message = await loadMessage(serverContext, args.messageId);
+                return loadMetadata(message);
             },
         }),
         auth: () => ({
@@ -64,7 +114,6 @@ const server = new ApolloServer({
     resolvers,
     context: (obj: { req: Request }) => {
         const { req } = obj;
-        console.log('HERE IS CALLED', req?.session, req?.session?.accessToken);
         return {
             accessToken: req?.session?.accessToken,
         };
@@ -81,13 +130,17 @@ app.listen({ port: 4000 }, () => console.log(`🚀 Server ready at http://localh
 app.get('/oauth2callback', async (req, res, next) => {
     const code = req.query.code as string;
     const tokens = await getToken(serverContext, code);
-    console.log('CODE IS FOO', code);
-    console.log('TOKEN IS BAR', JSON.stringify(tokens));
+
     const session = req.session;
     if (session) {
         session.accessToken = tokens.access_token;
         session.save(() => {});
-        console.log('SETTING SESSION ID TO ', req?.session?.id);
+        syncMailbox(
+            { ...serverContext, gmailCredentials: { access_token: tokens.access_token } },
+            'matt.sprague@gmail.com',
+            join(homedir(), 'message_cache'),
+            { maxPages: 10 },
+        );
     }
 
     res.redirect('http://localhost:8080/mailbox');
