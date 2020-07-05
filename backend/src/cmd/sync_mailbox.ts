@@ -5,7 +5,9 @@ import { join } from 'path';
 import { assertDefined } from '../utils';
 import { JobExecutor } from '../jobs/JobExecutor';
 import { mailboxEmitter } from '../events/EventEmitter';
+import { PrismaClient } from '@prisma/client';
 
+const prismaClient = new PrismaClient();
 export const syncMailbox = async (
     context: GmailContext,
     userId: string,
@@ -40,6 +42,9 @@ export const syncMailbox = async (
         pageCount += 1;
         messages.forEach(({ id }) => {
             assertDefined(id);
+            prismaClient.job.create({
+                data: { args: JSON.stringify({ messageId: id }), type: 'messageDownload' },
+            });
             gmailGetExecutor.addJob({ id });
         });
         if (options.maxPages && pageCount >= options.maxPages) {
@@ -48,6 +53,17 @@ export const syncMailbox = async (
         }
         mailboxEmitter.messagePageDownloaded(messages.length);
         if (nextPageToken) {
+            await prismaClient.job.create({
+                data: { args: JSON.stringify({ userId, pageToken: nextPageToken }), type: 'messagePageDownload' },
+            });
+            console.log(
+                'CURRENT RESULTS ARE',
+                await prismaClient.job.findMany({
+                    where: {
+                        type: 'messagePageDownload',
+                    },
+                }),
+            );
             gmailListExecutor.addJob({ userId, pageToken: nextPageToken });
         } else {
             mailboxEmitter.syncCompleted();

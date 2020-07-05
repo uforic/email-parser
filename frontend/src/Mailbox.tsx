@@ -28,7 +28,14 @@ function Mailbox() {
             <div>
                 <button onClick={() => setNextPageToken(null)}>First page</button>
                 {data.mailbox.getResultsPage.nextToken ? (
-                    <button onClick={() => setNextPageToken(data.mailbox.getResultsPage.nextToken)}>Next page</button>
+                    <button
+                        onClick={() => {
+                            setNextPageToken(data.mailbox.getResultsPage.nextToken);
+                            setSelectedMessage(null);
+                        }}
+                    >
+                        Next page
+                    </button>
                 ) : null}
             </div>
             {selectedMessage != null ? <MessagePreviewComponent messageId={selectedMessage} /> : null}
