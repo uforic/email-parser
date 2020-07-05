@@ -43,6 +43,7 @@ export const listMessages = async (context: GmailContext, userId: string, pageTo
     const initialPayload = gmailClient.users.messages.list({
         userId: userId,
         pageToken,
+        maxResults: 200,
     });
     const response = await initialPayload;
     return response.data;
