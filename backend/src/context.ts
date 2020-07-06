@@ -31,7 +31,7 @@ export const createGmailContext = (userId: string): GmailContext => {
     return {
         env: getEnvVars(),
         gmailCredentials: {
-            userId: 'matt.sprague@gmail.com',
+            userId: userId,
             accessToken: getAccessTokenForUser(userId),
         },
     } as GmailContext;

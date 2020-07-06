@@ -6,7 +6,7 @@ import { listMessages, getMessage } from '../clients/gmail';
 import { createContext } from '../context';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { parseEmail } from '../cmd/parse_message';
+import { analyzeEmail } from '../cmd/parse_message';
 import { gmail_v1 } from 'googleapis';
 import { homedir } from 'os';
 
@@ -60,7 +60,7 @@ program
     .action(async ({ message_path: messagePath }) => {
         const context = createContext();
         const message: gmail_v1.Schema$Message = JSON.parse(readFileSync(messagePath).toString());
-        const processResults = parseEmail(context, message);
+        const processResults = analyzeEmail(context, message);
         console.log('Message parse results', JSON.stringify(processResults));
     });
 

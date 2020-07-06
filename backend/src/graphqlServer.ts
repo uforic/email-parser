@@ -16,10 +16,6 @@ const serverContext = createContext();
 const typeDefs = gql`
     # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
 
-    type Auth {
-        gmailOauth2Redirect: String!
-    }
-
     type MailboxSyncStatus {
         numMessagesSeen: Int!
         numMessagesDownloaded: Int!
@@ -41,7 +37,7 @@ const typeDefs = gql`
 
     type ResultsPage {
         results: [Result!]!
-        nextToken: String
+        nextToken: Int
     }
 
     type MessagePreview {
@@ -53,7 +49,7 @@ const typeDefs = gql`
 
     type MailboxQueries {
         getMailboxSyncStatus: MailboxSyncStatus!
-        getResultsPage(token: String): ResultsPage!
+        getResultsPage(token: Int): ResultsPage!
         getMessagePreview(messageId: String!): MessagePreview
     }
 
@@ -61,7 +57,6 @@ const typeDefs = gql`
     # clients can execute, along with the return type for each. In this
     # case, the "books" query returns an array of zero or more Books (defined above).
     type Query {
-        auth: Auth!
         mailbox: MailboxQueries!
     }
 `;
@@ -79,44 +74,24 @@ const resolvers = {
                     isCompleted: state.syncCompleted,
                 };
             },
-            getResultsPage: async (args: { token?: string }, b: ApolloContext) => {
+            getResultsPage: async (args: { token?: number }, b: ApolloContext) => {
                 assertDefined(b.auth);
-                let results = state.results.slice(0, PAGE_SIZE);
-                let pageEnd = PAGE_SIZE;
-                if (args.token) {
-                    const index = state.results.findIndex((result) => result.messageId === args.token);
-                    pageEnd = index + PAGE_SIZE;
-                    results = state.results.slice(index, pageEnd);
-                }
-
-                const otherResults = await getPageOfResults(b.auth.userId);
-                const test = otherResults.map((otherResult) => {
+                const { results, nextPageToken } = await getPageOfResults(b.auth.userId, PAGE_SIZE, args.token);
+                const transformedResults = results.map((result) => {
                     return {
-                        messageId: otherResult.messageId,
-                        results: [
-                            {
-                                type: otherResult.type,
-                                href: otherResult.data.href,
-                                firstCharPos: otherResult.data.firstCharPos,
-                            },
-                        ],
+                        messageId: result.messageId,
+                        results: result.data,
                     };
                 });
-                console.log('OTHERS', test);
-                return {
-                    results: test,
-                    nextToken: state.results[pageEnd + 1]?.messageId,
+                const returnObj = {
+                    results: transformedResults,
+                    nextToken: nextPageToken,
                 };
+                return returnObj;
             },
             getMessagePreview: async (args: { messageId: string }) => {
                 const message = await loadMessage(serverContext, args.messageId);
                 return loadMetadata(message);
-            },
-        }),
-        auth: () => ({
-            gmailOauth2Redirect: () => {
-                console;
-                return getOauth2Url(serverContext);
             },
         }),
     },
@@ -145,6 +120,10 @@ const server = new ApolloServer({
             };
         }
         return { auth: undefined };
+    },
+    formatError: (error) => {
+        console.error('GraphQL Error: ', error);
+        return error;
     },
 });
 

@@ -9,7 +9,6 @@ export const state = {
     numberOfMessagesSeen: 0,
     numberOfMessagesDownloaded: 0,
     syncCompleted: false,
-    results: [] as Array<{ messageId: string; results: Array<DetectedLink> }>,
 };
 
 mailboxEmitter.onMessagePageDownloaded((numMessages) => {
@@ -66,6 +65,7 @@ export type JobType = typeof DOWNLOAD_MESSAGE | typeof SYNC_MAILBOX | typeof ANA
 
 import { PrismaClient } from '@prisma/client';
 import AsyncLock from 'async-lock';
+import { LinkAnalysisData } from './events/MessageDownloadListener';
 const _prismaClient = new PrismaClient();
 
 const prismaLock = new AsyncLock({ maxPending: 10000 });
@@ -142,6 +142,25 @@ export const addJob = async (userId: string, type: JobType, jobArgs: {}) => {
 
 export const storeResult = async (userId: string, messageId: string, type: string, data: {}) => {
     await prismaClient(async (prismaClient) => {
+        const previousMessage = (
+            await prismaClient.result.findMany({
+                where: {
+                    type,
+                    messageId,
+                    userId,
+                },
+            })
+        )[0];
+        if (previousMessage) {
+            return await prismaClient.result.update({
+                where: {
+                    id: previousMessage.id,
+                },
+                data: {
+                    data: JSON.stringify(data),
+                },
+            });
+        }
         return await prismaClient.result.create({
             data: {
                 data: JSON.stringify(data),
@@ -153,18 +172,30 @@ export const storeResult = async (userId: string, messageId: string, type: strin
     });
 };
 
-export const getPageOfResults = async (userId: string, previousToken?: string) => {
+export const getPageOfResults = async (userId: string, pageSize: number, previousToken?: number) => {
+    const mapResult = (result: any) => ({ ...result, data: JSON.parse(result.data) as LinkAnalysisData });
     return await prismaClient(async (prismaClient) => {
-        return (
+        const results = (
             await prismaClient.result.findMany({
-                take: 5,
+                take: pageSize + 1,
                 orderBy: {
-                    messageId: 'asc',
+                    id: 'asc',
                 },
                 where: {
                     userId,
                 },
+                cursor:
+                    previousToken != null
+                        ? {
+                              id: previousToken,
+                          }
+                        : undefined,
             })
-        ).map((result) => ({ ...result, data: JSON.parse(result.data) as DetectedLink }));
+        ).map(mapResult);
+
+        return {
+            results: results.slice(0, Math.max(pageSize, results.length - 1)),
+            nextPageToken: results.length < pageSize + 1 ? undefined : results[results.length - 1].id,
+        };
     });
 };

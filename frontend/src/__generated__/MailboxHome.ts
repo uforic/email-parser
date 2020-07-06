@@ -28,7 +28,7 @@ export interface MailboxHome_mailbox_getResultsPage_results {
 
 export interface MailboxHome_mailbox_getResultsPage {
   __typename: "ResultsPage";
-  nextToken: string | null;
+  nextToken: number | null;
   results: MailboxHome_mailbox_getResultsPage_results[];
 }
 
@@ -43,5 +43,5 @@ export interface MailboxHome {
 }
 
 export interface MailboxHomeVariables {
-  nextPageToken?: string | null;
+  nextPageToken?: number | null;
 }

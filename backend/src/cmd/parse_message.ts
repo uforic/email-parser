@@ -3,11 +3,11 @@ import { parse, HTMLElement } from 'node-html-parser';
 import { Context } from '../context';
 import { isDefined } from '../utils';
 
-export const parseEmail = (context: Context, message: gmail_v1.Schema$Message) => {
+export const analyzeEmail = (context: Context, message: gmail_v1.Schema$Message) => {
     if (!message.payload) {
-        return [];
+        return { linkResults: [] };
     }
-    return parseMessagePart(context, message.payload);
+    return { linkResults: parseMessagePartForLinks(context, message.payload) };
 };
 
 export type DetectedLink = {
@@ -38,7 +38,7 @@ const linkAnalysisConfigs = [
     },
 ];
 
-const parseMessagePart = (context: Context, part: gmail_v1.Schema$MessagePart): Array<DetectedLink> => {
+const parseMessagePartForLinks = (context: Context, part: gmail_v1.Schema$MessagePart): Array<DetectedLink> => {
     if (part.mimeType === 'text/html') {
         const emailBody = part?.body?.data;
         // have noticed that some messages don't have data, specifically when they are attachments
@@ -67,7 +67,7 @@ const parseMessagePart = (context: Context, part: gmail_v1.Schema$MessagePart): 
         if (!part.parts) {
             return [];
         }
-        return part.parts.flatMap((part: gmail_v1.Schema$MessagePart) => parseMessagePart(context, part));
+        return part.parts.flatMap((part: gmail_v1.Schema$MessagePart) => parseMessagePartForLinks(context, part));
     }
     return [];
 };

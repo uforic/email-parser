@@ -5,7 +5,7 @@ import { MailboxHome, MailboxHomeVariables } from './__generated__/MailboxHome';
 import { MessagePreview, MessagePreviewVariables } from './__generated__/MessagePreview';
 
 function Mailbox() {
-    const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+    const [nextPageToken, setNextPageToken] = useState<number | null>(null);
     const { loading, data } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
         pollInterval: 1000,
         variables: {
@@ -86,7 +86,7 @@ const MessagePreviewComponent = (props: { messageId: string }) => {
 };
 
 const QUERY = gql`
-    query MailboxHome($nextPageToken: String) {
+    query MailboxHome($nextPageToken: Int) {
         mailbox {
             getMailboxSyncStatus {
                 numMessagesSeen

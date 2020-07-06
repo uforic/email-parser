@@ -38,7 +38,7 @@ const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(async (userI
         pageCount += 1;
         messages.forEach(({ id }) => {
             assertDefined(id);
-            DOWNLOAD_MESSAGE_EXECUTOR.addJob('matt.sprague@gmail.com', { messageId: id });
+            DOWNLOAD_MESSAGE_EXECUTOR.addJob(userId, { messageId: id });
         });
         if (args.maxPages && pageCount >= args.maxPages) {
             mailboxEmitter.syncCompleted();
