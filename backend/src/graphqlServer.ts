@@ -1,13 +1,12 @@
 import { ApolloServer, gql } from 'apollo-server-express';
 import express, { Request } from 'express';
-import { getOauth2Url, getToken, listMessages } from './clients/gmail';
-import { createContext } from './context';
+import { getOauth2Url, getToken } from './clients/gmail';
+import { createContext, setAccessTokenForUser, createGmailContext } from './context';
 import session from 'express-session';
-import { state, loadMessage, loadMetadata } from './store';
+import { state, loadMessage, loadMetadata, resetAllJobs, getPageOfResults } from './store';
 import { syncMailbox } from './cmd/sync_mailbox';
-import { homedir } from 'os';
-import { join } from 'path';
 import './events/MessageDownloadListener';
+import { assertDefined } from './utils';
 
 const serverContext = createContext();
 
@@ -80,7 +79,8 @@ const resolvers = {
                     isCompleted: state.syncCompleted,
                 };
             },
-            getResultsPage: (args: { token?: string }) => {
+            getResultsPage: async (args: { token?: string }, b: ApolloContext) => {
+                assertDefined(b.auth);
                 let results = state.results.slice(0, PAGE_SIZE);
                 let pageEnd = PAGE_SIZE;
                 if (args.token) {
@@ -88,8 +88,23 @@ const resolvers = {
                     pageEnd = index + PAGE_SIZE;
                     results = state.results.slice(index, pageEnd);
                 }
+
+                const otherResults = await getPageOfResults(b.auth.userId);
+                const test = otherResults.map((otherResult) => {
+                    return {
+                        messageId: otherResult.messageId,
+                        results: [
+                            {
+                                type: otherResult.type,
+                                href: otherResult.data.href,
+                                firstCharPos: otherResult.data.firstCharPos,
+                            },
+                        ],
+                    };
+                });
+                console.log('OTHERS', test);
                 return {
-                    results,
+                    results: test,
                     nextToken: state.results[pageEnd + 1]?.messageId,
                 };
             },
@@ -107,16 +122,29 @@ const resolvers = {
     },
 };
 
+type ApolloContext = {
+    auth?: {
+        userId: string;
+        accessToken: string;
+    };
+};
+
 // The ApolloServer constructor requires two parameters: your schema
 // definition and your set of resolvers.
 const server = new ApolloServer({
     typeDefs,
     resolvers,
-    context: (obj: { req: Request }) => {
+    context: (obj: { req: Request }): ApolloContext => {
         const { req } = obj;
-        return {
-            accessToken: req?.session?.accessToken,
-        };
+        if (req?.session?.accessToken && req?.session?.userId) {
+            return {
+                auth: {
+                    accessToken: req?.session?.accessToken,
+                    userId: req?.session?.userId,
+                },
+            };
+        }
+        return { auth: undefined };
     },
 });
 
@@ -130,19 +158,17 @@ app.listen({ port: 4000 }, () => console.log(`🚀 Server ready at http://localh
 app.get('/oauth2callback', async (req, res, next) => {
     const code = req.query.code as string;
     const tokens = await getToken(serverContext, code);
-
+    // TODO: Figure out how to get this from the google response
+    const userId = 'matt.sprague@gmail.com';
     const session = req.session;
     if (session) {
+        session.userId = userId;
         session.accessToken = tokens.access_token;
         session.save(() => {});
-        syncMailbox(
-            { ...serverContext, gmailCredentials: { access_token: tokens.access_token } },
-            'matt.sprague@gmail.com',
-            join(homedir(), 'message_cache'),
-            { maxPages: 10 },
-        );
+        setAccessTokenForUser(userId, tokens.access_token as string);
+        const context = createGmailContext(userId);
+        syncMailbox(context, userId, context.env.cacheDirectory, { maxPages: 10 });
     }
-
     res.redirect('http://localhost:8080/mailbox');
     next();
 });
@@ -151,3 +177,5 @@ app.get('/auth/gmail', (_, res) => {
     const url = getOauth2Url(serverContext);
     res.redirect(url);
 });
+
+resetAllJobs();

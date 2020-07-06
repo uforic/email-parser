@@ -1,6 +1,5 @@
 import { google } from 'googleapis';
 import { Context, GmailContext } from '../context';
-import { assertDefined } from '../utils';
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 
@@ -30,7 +29,7 @@ export const getToken = async (context: Context, code: string) => {
 
 const getGmailClient = (context: GmailContext) => {
     const oauth2Client = getOauth2Client(context);
-    oauth2Client.setCredentials(context.gmailCredentials);
+    oauth2Client.setCredentials({ access_token: context.gmailCredentials.accessToken });
     const gmailClient = google.gmail({
         auth: oauth2Client,
         version: 'v1',

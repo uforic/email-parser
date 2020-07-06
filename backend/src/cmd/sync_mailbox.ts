@@ -1,74 +1,72 @@
-import { GmailContext } from '../context';
+import { GmailContext, createGmailContext } from '../context';
 import { listMessages, getMessage } from '../clients/gmail';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { assertDefined } from '../utils';
 import { JobExecutor } from '../jobs/JobExecutor';
 import { mailboxEmitter } from '../events/EventEmitter';
-import { PrismaClient } from '@prisma/client';
+import { DOWNLOAD_MESSAGE, SYNC_MAILBOX } from '../store';
 
-const prismaClient = new PrismaClient();
+const DOWNLOAD_MESSAGE_EXECUTOR = new JobExecutor<{ messageId: string }>(
+    async (userId, args) => {
+        // console.log(userId, args);
+        const { messageId } = args;
+        const context = createGmailContext(userId);
+        const messagePath = join(context.env.cacheDirectory, messageId + '.json');
+        if (existsSync(messagePath)) {
+            mailboxEmitter.messageDownloaded(userId, messageId);
+            return;
+        }
+        const message = await getMessage(context, userId, messageId);
+        writeFileSync(messagePath, JSON.stringify(message));
+        mailboxEmitter.messageDownloaded(userId, messageId);
+    },
+    DOWNLOAD_MESSAGE,
+    {
+        maxConcurrentJobs: 1,
+    },
+);
+
+const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(async (userId, args) => {
+    console.log('PROCESSING JOB', args, userId);
+    let pageCount = 0;
+    const context = createGmailContext(userId);
+    const processNextPage = async (nextToken: string | undefined) => {
+        console.log('PROCESSING PAGE', pageCount);
+        const { messages, nextPageToken } = await listMessages(context, context.gmailCredentials.userId, nextToken);
+        assertDefined(messages);
+        pageCount += 1;
+        messages.forEach(({ id }) => {
+            assertDefined(id);
+            DOWNLOAD_MESSAGE_EXECUTOR.addJob('matt.sprague@gmail.com', { messageId: id });
+        });
+        if (args.maxPages && pageCount >= args.maxPages) {
+            mailboxEmitter.syncCompleted();
+            return;
+        }
+        mailboxEmitter.messagePageDownloaded(messages.length);
+        if (nextPageToken) {
+            processNextPage(nextPageToken);
+        } else {
+            mailboxEmitter.syncCompleted();
+        }
+    };
+    processNextPage(undefined);
+}, SYNC_MAILBOX);
+
 export const syncMailbox = async (
     context: GmailContext,
     userId: string,
     cacheDirectory: string,
     options: {
-        // for debugging, if you want to only sync n messages
+        // for debugging, to limit network requests / wait
         maxPages?: number;
     },
 ) => {
     if (!existsSync(cacheDirectory)) {
         mkdirSync(cacheDirectory);
     }
-
-    let pageCount = 0;
-
-    const gmailGetExecutor = new JobExecutor<{ id: string }>(
-        async ({ id }) => {
-            const messagePath = join(cacheDirectory, id + '.json');
-            if (existsSync(messagePath)) {
-                mailboxEmitter.messageDownloaded(id);
-                return;
-            }
-            const message = await getMessage(context, userId, id);
-            writeFileSync(messagePath, JSON.stringify(message));
-            mailboxEmitter.messageDownloaded(id);
-        },
-        { maxConcurrentJobs: 100 },
-    );
-    const gmailListExecutor = new JobExecutor<{ userId: string; pageToken?: string }>(async (args) => {
-        const { messages, nextPageToken } = await listMessages(context, args.userId, args.pageToken);
-        assertDefined(messages);
-        pageCount += 1;
-        messages.forEach(({ id }) => {
-            assertDefined(id);
-            prismaClient.job.create({
-                data: { args: JSON.stringify({ messageId: id }), type: 'messageDownload' },
-            });
-            gmailGetExecutor.addJob({ id });
-        });
-        if (options.maxPages && pageCount >= options.maxPages) {
-            mailboxEmitter.syncCompleted();
-            return;
-        }
-        mailboxEmitter.messagePageDownloaded(messages.length);
-        if (nextPageToken) {
-            await prismaClient.job.create({
-                data: { args: JSON.stringify({ userId, pageToken: nextPageToken }), type: 'messagePageDownload' },
-            });
-            console.log(
-                'CURRENT RESULTS ARE',
-                await prismaClient.job.findMany({
-                    where: {
-                        type: 'messagePageDownload',
-                    },
-                }),
-            );
-            gmailListExecutor.addJob({ userId, pageToken: nextPageToken });
-        } else {
-            mailboxEmitter.syncCompleted();
-        }
+    SYNC_MAILBOX_EXECUTOR.addJob(userId, {
+        maxPages: options.maxPages || 0,
     });
-
-    gmailListExecutor.addJob({ userId });
 };

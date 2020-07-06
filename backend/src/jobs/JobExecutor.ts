@@ -1,50 +1,58 @@
-type Job<JobArgs extends {}> = { jobId: number; jobArgs: JobArgs };
+import {
+    markJobFailed,
+    JobType,
+    addJob,
+    getFreshJobAndMarkInProgress,
+    getNumberOfCurrentlyRunningJobs,
+} from '../store';
+
+type Job<JobArgs extends {}> = { jobId: number; jobArgs: JobArgs; userId: string };
 export class JobExecutor<JobArgs extends {}> {
     maxConcurrentJobs: number = 1;
-    jobFn: (jobArgs: JobArgs) => void;
-    jobQueue: Array<Job<JobArgs>> = [];
-    stop: boolean = false;
-    jobCounter: number = 0;
-    currentlyRunningJobs: { [jobId: number]: JobArgs } = {};
+    jobFn: (userId: string, jobArgs: JobArgs) => void;
+    jobType: JobType;
     constructor(
-        jobFn: (jobArgs: JobArgs) => Promise<void>,
+        jobFn: (userId: string, jobArgs: JobArgs) => Promise<void>,
+        jobType: JobType,
         options?: {
             maxConcurrentJobs?: number;
         },
     ) {
         this.jobFn = jobFn;
+        this.jobType = jobType;
         if (options?.maxConcurrentJobs != null) {
             this.maxConcurrentJobs = options.maxConcurrentJobs;
         }
     }
-    addJob = async (jobArgs: JobArgs) => {
-        this.jobQueue.push({ jobArgs, jobId: this.jobCounter });
-        this.jobCounter += 1;
+    addJob = async (userId: string, jobArgs: JobArgs) => {
+        await addJob(userId, this.jobType, jobArgs);
         this.processJobs();
-        return this.jobCounter;
     };
     processJob = async (job: Job<JobArgs>) => {
-        this.currentlyRunningJobs[job.jobId] = job.jobArgs;
         try {
-            await this.jobFn(job.jobArgs);
+            await this.jobFn(job.userId, job.jobArgs);
         } catch (error) {
+            await markJobFailed(job.jobId);
             console.error('Error processing job', job, error);
         }
-        delete this.currentlyRunningJobs[job.jobId];
         this.processJobs();
     };
-    stopExecutor = () => {
-        this.stop = true;
-    };
     processJobs = async () => {
-        if (this.jobQueue.length === 0) {
+        if (
+            this.maxConcurrentJobs != 0 &&
+            (await getNumberOfCurrentlyRunningJobs(this.jobType)) >= this.maxConcurrentJobs
+        ) {
             return;
         }
-        if (this.maxConcurrentJobs != 0 && Object.keys(this.currentlyRunningJobs).length >= this.maxConcurrentJobs) {
+        const job = await getFreshJobAndMarkInProgress(this.jobType);
+        if (!job) {
             return;
         }
-        const jobToRun = this.jobQueue[0];
-        this.jobQueue = this.jobQueue.slice(1);
-        this.processJob(jobToRun);
+
+        this.processJob({
+            jobArgs: JSON.parse(job.args),
+            jobId: job.id,
+            userId: job.userId,
+        });
     };
 }

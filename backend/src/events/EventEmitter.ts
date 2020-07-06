@@ -8,8 +8,8 @@ class MailboxEmitter extends EventEmitter {
     messagePageDownloaded = (pageLength: number) => {
         this.emit(PAGE_DOWNLOADED, pageLength);
     };
-    messageDownloaded = (id: string) => {
-        this.emit(MESSAGE_DOWNLOADED, id);
+    messageDownloaded = (userId: string, messageId: string) => {
+        this.emit(MESSAGE_DOWNLOADED, userId, messageId);
     };
     syncCompleted = () => {
         this.emit(SYNC_COMPLETED);
@@ -19,7 +19,7 @@ class MailboxEmitter extends EventEmitter {
         this.on(PAGE_DOWNLOADED, callback);
     };
 
-    onMessageDownloaded = (callback: (id: string) => void) => {
+    onMessageDownloaded = (callback: (userId: string, messageId: string) => void) => {
         this.on(MESSAGE_DOWNLOADED, callback);
     };
 

@@ -5,11 +5,34 @@ export interface Context {
 }
 
 export interface GmailContext extends Context {
-    gmailCredentials: {};
+    gmailCredentials: {
+        userId: string;
+        accessToken: string;
+    };
 }
 
 export const createContext = () => {
     return {
         env: getEnvVars(),
     } as Context;
+};
+
+const tokens: Record<string, string> = {};
+
+export const setAccessTokenForUser = (userId: string, accessToken: string) => {
+    tokens[userId] = accessToken;
+};
+
+const getAccessTokenForUser = (userId: string) => {
+    return tokens[userId];
+};
+
+export const createGmailContext = (userId: string): GmailContext => {
+    return {
+        env: getEnvVars(),
+        gmailCredentials: {
+            userId: 'matt.sprague@gmail.com',
+            accessToken: getAccessTokenForUser(userId),
+        },
+    } as GmailContext;
 };
