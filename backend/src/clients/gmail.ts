@@ -1,7 +1,8 @@
 import { google } from 'googleapis';
 import { Context, GmailContext } from '../context';
+import jwtDecode from 'jwt-decode';
 
-const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
+const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/userinfo.email'];
 
 const getOauth2Client = (context: Context) => {
     const oAuth2Client = new google.auth.OAuth2(
@@ -24,7 +25,8 @@ export const getOauth2Url = (context: Context) => {
 export const getToken = async (context: Context, code: string) => {
     const oauth2Client = getOauth2Client(context);
     const { tokens } = await oauth2Client.getToken(code);
-    return tokens;
+    const decodedIdToken: { email: string } = jwtDecode(tokens.id_token as string);
+    return { access_token: tokens.access_token, userId: decodedIdToken.email };
 };
 
 const getGmailClient = (context: GmailContext) => {

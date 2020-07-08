@@ -19,7 +19,7 @@ function Mailbox() {
     });
     const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
 
-    if (error?.graphQLErrors[0].extensions?.code === 'FORBIDDEN') {
+    if (error?.graphQLErrors?.[0]?.extensions?.code === 'FORBIDDEN') {
         return (
             <div>
                 You are not logged in. Please relogin on the home page.

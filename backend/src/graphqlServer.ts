@@ -41,15 +41,14 @@ app.listen({ port: 4000 }, () => console.log(`🚀 Server ready at http://localh
 app.get('/oauth2callback', async (req, res, next) => {
     const code = req.query.code as string;
     const serverContext = createContext();
-    const tokens = await getToken(serverContext, code);
+    const { access_token, userId } = await getToken(serverContext, code);
     // TODO: Figure out how to get this from the google response
-    const userId = 'matt.sprague@gmail.com';
     const session = req.session;
     if (session) {
         session.userId = userId;
-        session.accessToken = tokens.access_token;
+        session.accessToken = access_token;
         session.save(() => {});
-        setAccessTokenForUser(userId, tokens.access_token as string);
+        setAccessTokenForUser(userId, access_token as string);
         const context = createGmailContext(userId);
         syncMailbox(context, userId, context.env.cacheDirectory, {});
     }
