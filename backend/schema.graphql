@@ -1,0 +1,70 @@
+type MailboxSyncStatus {
+    userId: String!
+    numMessagesSeen: Int!
+    numMessagesDownloaded: Int!
+    createdAt: Int!
+    updatedAt: Int!
+    isCompleted: Boolean!
+    status: JobStatus!
+}
+
+enum JobStatus {
+    UNKNOWN
+    COMPLETED
+    NOT_STARTED
+    IN_PROGRESS
+    FAILED
+}
+
+type LinkDetection {
+    type: LinkType!
+    href: String!
+    firstCharPos: Int!
+}
+
+enum LinkType {
+    UNKNOWN
+    GOOGLE_DOCS
+    GOOGLE_DRIVE
+}
+
+type LinkData {
+    results: [LinkDetection!]!
+}
+
+type TrackingData {
+    results: [LinkDetection!]!
+}
+
+union AnalysisData = TrackingData | LinkData
+
+type Result {
+    messageId: String!
+    data: AnalysisData!
+}
+
+type ResultsPage {
+    results: [Result!]!
+    nextToken: Int
+}
+
+type MessagePreview {
+    subject: String!
+    from: String!
+    to: String!
+    snippet: String!
+}
+
+type MailboxQueries {
+    getMailboxSyncStatus: MailboxSyncStatus!
+    getResultsPage(token: Int): ResultsPage!
+    getMessagePreview(messageId: String!): MessagePreview
+    syncMailbox: Boolean!
+}
+
+# The "Query" type is special: it lists all of the available queries that
+# clients can execute, along with the return type for each. In this
+# case, the "books" query returns an array of zero or more Books (defined above).
+type Query {
+    mailbox: MailboxQueries!
+}

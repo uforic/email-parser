@@ -99,6 +99,20 @@
       "arity": "Required"
     },
     {
+      "tag": "CreateField",
+      "model": "Job",
+      "field": "createdAt",
+      "type": "Int",
+      "arity": "Required"
+    },
+    {
+      "tag": "CreateField",
+      "model": "Job",
+      "field": "updatedAt",
+      "type": "Int",
+      "arity": "Required"
+    },
+    {
       "tag": "CreateModel",
       "model": "Message"
     },

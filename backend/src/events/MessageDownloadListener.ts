@@ -24,7 +24,9 @@ const PARSE_MESSAGE_EXECUTOR = new JobExecutor<{ messageId: string }>(
 );
 
 mailboxEmitter.onMessageDownloaded(async (userId, messageId) => {
-    PARSE_MESSAGE_EXECUTOR.addJob(userId, {
-        messageId,
-    });
+    PARSE_MESSAGE_EXECUTOR.addJobs(userId, [
+        {
+            messageId,
+        },
+    ]);
 });

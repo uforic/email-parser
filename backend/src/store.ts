@@ -1,9 +1,10 @@
 import { mailboxEmitter } from './events/EventEmitter';
-import { DetectedLink } from './cmd/parse_message';
 import { Context } from './context';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { gmail_v1 } from 'googleapis';
+import sqlstring from 'sqlstring';
+import { JobStatus } from './graphql/resolvers';
 
 export const state = {
     numberOfMessagesSeen: 0,
@@ -16,9 +17,6 @@ mailboxEmitter.onMessagePageDownloaded((numMessages) => {
 });
 mailboxEmitter.onMessageDownloaded(() => {
     state.numberOfMessagesDownloaded++;
-});
-mailboxEmitter.onSyncCompleted(() => {
-    state.syncCompleted = true;
 });
 
 export const loadMessage = (context: Context, messageId: string): gmail_v1.Schema$Message => {
@@ -52,10 +50,10 @@ export const loadMetadata = (
     return metadata;
 };
 
-const COMPLETED = 'completed';
-const NOT_STARTED = 'not_started';
-const IN_PROGRESS = 'in_progress';
-const FAILED = 'failed';
+const COMPLETED = JobStatus.Completed;
+const NOT_STARTED = JobStatus.NotStarted;
+const IN_PROGRESS = JobStatus.InProgress;
+const FAILED = JobStatus.Failed;
 
 export const DOWNLOAD_MESSAGE = 'downloadMessage';
 export const SYNC_MAILBOX = 'syncMailbox';
@@ -70,78 +68,114 @@ const _prismaClient = new PrismaClient();
 
 const prismaLock = new AsyncLock({ maxPending: 10000 });
 
-const prismaClient = async <K>(fn: (prismaClient: PrismaClient) => Promise<K>) => {
-    return await prismaLock.acquire('key', async () => {
+const prismaClient = async <K>(lockNames: Array<string>, fn: (prismaClient: PrismaClient) => Promise<K>) => {
+    return await prismaLock.acquire(lockNames, async () => {
         return await fn(_prismaClient);
     });
 };
 
+const JOB_LOCK = 'job';
+const RESULT_LOCK = 'result';
+
+const getIntDate = () => Math.round(Date.now() / 1000);
+
+export const getMostRecentMailboxSyncJob = async (userId: string) => {
+    return (
+        await prismaClient([JOB_LOCK], async (prismaClient) => {
+            return await prismaClient.job.findMany({
+                where: {
+                    type: SYNC_MAILBOX,
+                    userId,
+                },
+                take: 1,
+                orderBy: {
+                    createdAt: 'desc',
+                },
+            });
+        })
+    )[0];
+};
+
 export const markJobComplete = async (jobId: number) => {
-    await prismaClient(async (prismaClient) => {
-        await prismaClient.job.update({ where: { id: jobId }, data: { status: COMPLETED } });
+    await prismaClient([JOB_LOCK], async (prismaClient) => {
+        await prismaClient.job.update({
+            where: { id: jobId },
+            data: { status: COMPLETED, updatedAt: getIntDate() },
+        });
     });
 };
 
 export const markJobFailed = async (jobId: number) => {
-    await prismaClient(async (prismaClient) => {
-        return await prismaClient.job.update({ where: { id: jobId }, data: { status: FAILED } });
+    await prismaClient([JOB_LOCK], async (prismaClient) => {
+        return await prismaClient.job.update({
+            where: { id: jobId },
+            data: { status: FAILED, updatedAt: getIntDate() },
+        });
     });
 };
 
 export const markJobInProgress = async (jobId: number) => {
-    await prismaClient(async (prismaClient) => {
-        return await prismaClient.job.update({ where: { id: jobId }, data: { status: IN_PROGRESS } });
+    await prismaClient([JOB_LOCK], async (prismaClient) => {
+        return await prismaClient.job.update({
+            where: { id: jobId },
+            data: { status: IN_PROGRESS, updatedAt: getIntDate() },
+        });
     });
 };
 
 export const resetAllJobs = async () => {
-    await prismaClient(async (prismaClient) => {
-        return await prismaClient.job.updateMany({ where: { status: IN_PROGRESS }, data: { status: 'not_started' } });
-    });
-};
-
-export const getFreshJobAndMarkInProgress = async (jobType: JobType) => {
-    return await prismaClient(async (prismaClient) => {
-        const job = await prismaClient.job.findMany({
-            where: {
-                status: NOT_STARTED,
-                type: jobType,
-            },
-            take: 1,
-        });
-        if (job.length === 0) {
-            return null;
-        }
-        await prismaClient.job.update({ where: { id: job[0].id }, data: { status: 'in_progress' } });
-        return job[0];
-    });
-};
-export const getNumberOfCurrentlyRunningJobs = async (jobType: JobType) => {
-    return await prismaClient(async (prismaClient) => {
-        return await prismaClient.job.count({
-            where: {
-                status: IN_PROGRESS,
-                type: jobType,
-            },
+    await prismaClient([JOB_LOCK], async (prismaClient) => {
+        return await prismaClient.job.updateMany({
+            where: { status: IN_PROGRESS },
+            data: { status: 'not_started', updatedAt: getIntDate() },
         });
     });
 };
 
-export const addJob = async (userId: string, type: JobType, jobArgs: {}) => {
-    await prismaClient(async (prismaClient) => {
-        return await prismaClient.job.create({
-            data: {
-                args: JSON.stringify(jobArgs),
-                type: type,
+export const getFreshJobAndMarkInProgress = async (jobType: JobType, take: number) => {
+    return await prismaClient([JOB_LOCK], async (prismaClient) => {
+        const jobs = await prismaClient.job.findMany({
+            where: {
                 status: NOT_STARTED,
-                userId,
+                type: jobType,
             },
+            take,
         });
+        await prismaClient.job.updateMany({
+            where: {
+                id: {
+                    in: jobs.map((job) => job.id),
+                },
+            },
+            data: { status: IN_PROGRESS, updatedAt: getIntDate() },
+        });
+        return jobs;
+    });
+};
+
+export const addJobs = async (jobs: Array<{ userId: string; type: JobType; jobArgs: {} }>) => {
+    await prismaClient([JOB_LOCK], async (prismaClient) => {
+        const createdDate = getIntDate();
+        const jobList = jobs
+            .map((job) => {
+                return `('${JSON.stringify(job.jobArgs)}', ${sqlstring.escape(job.type)}, ${sqlstring.escape(
+                    NOT_STARTED,
+                )}, ${sqlstring.escape(job.userId)}, ${createdDate}, ${createdDate})`;
+            })
+            .join(',');
+
+        const result: number = await prismaClient.executeRaw(`
+            INSERT INTO job (args, type, status, userId, createdAt, updatedAt)
+            VALUES 
+                ${jobList}
+            ;
+        `);
+        return result;
     });
 };
 
 export const storeResult = async (userId: string, messageId: string, type: string, data: {}) => {
-    await prismaClient(async (prismaClient) => {
+    await prismaClient([RESULT_LOCK], async (prismaClient) => {
         const previousMessage = (
             await prismaClient.result.findMany({
                 where: {
@@ -173,25 +207,26 @@ export const storeResult = async (userId: string, messageId: string, type: strin
 };
 
 export const getPageOfResults = async (userId: string, pageSize: number, previousToken?: number) => {
-    const mapResult = (result: any) => ({ ...result, data: JSON.parse(result.data) as LinkAnalysisData });
-    return await prismaClient(async (prismaClient) => {
-        const results = (
-            await prismaClient.result.findMany({
-                take: pageSize + 1,
-                orderBy: {
-                    id: 'asc',
-                },
-                where: {
-                    userId,
-                },
-                cursor:
-                    previousToken != null
-                        ? {
-                              id: previousToken,
-                          }
-                        : undefined,
-            })
-        ).map(mapResult);
+    return await prismaClient([RESULT_LOCK], async (prismaClient) => {
+        const _results = await prismaClient.result.findMany({
+            take: pageSize + 1,
+            orderBy: {
+                id: 'asc',
+            },
+            where: {
+                userId,
+            },
+            cursor:
+                previousToken != null
+                    ? {
+                          id: previousToken,
+                      }
+                    : undefined,
+        });
+
+        const results = _results.map((result) => {
+            return { ...result, data: JSON.parse(result.data) as LinkAnalysisData };
+        });
 
         return {
             results: results.slice(0, Math.max(pageSize, results.length - 1)),

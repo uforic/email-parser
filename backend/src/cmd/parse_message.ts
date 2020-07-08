@@ -2,6 +2,7 @@ import { gmail_v1 } from 'googleapis';
 import { parse, HTMLElement } from 'node-html-parser';
 import { Context } from '../context';
 import { isDefined } from '../utils';
+import { LinkType } from '../graphql/resolvers';
 
 export const analyzeEmail = (context: Context, message: gmail_v1.Schema$Message) => {
     if (!message.payload) {
@@ -28,12 +29,12 @@ const linkAnalyzer = (urlRegex: RegExp, linkElement: HTMLElement) => {
 };
 
 const linkAnalysisConfigs = [
-    // {
-    //     type: 'googleDrive',
-    //     urlRegex: /http/,
-    // },
     {
-        type: 'googleDocs',
+        type: LinkType.GoogleDrive,
+        urlRegex: /https:\/\/drive.google.com\/file\/d\//,
+    },
+    {
+        type: LinkType.GoogleDocs,
         urlRegex: /https:\/\/docs.google.com\/document\/d/,
     },
 ];

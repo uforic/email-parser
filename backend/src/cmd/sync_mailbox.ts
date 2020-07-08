@@ -2,7 +2,7 @@ import { GmailContext, createGmailContext } from '../context';
 import { listMessages, getMessage } from '../clients/gmail';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { assertDefined } from '../utils';
+import { assertDefined, isDefined } from '../utils';
 import { JobExecutor } from '../jobs/JobExecutor';
 import { mailboxEmitter } from '../events/EventEmitter';
 import { DOWNLOAD_MESSAGE, SYNC_MAILBOX } from '../store';
@@ -36,19 +36,19 @@ const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(async (userI
         const { messages, nextPageToken } = await listMessages(context, context.gmailCredentials.userId, nextToken);
         assertDefined(messages);
         pageCount += 1;
-        messages.forEach(({ id }) => {
-            assertDefined(id);
-            DOWNLOAD_MESSAGE_EXECUTOR.addJob(userId, { messageId: id });
-        });
+        const jobs = messages
+            .map(({ id }) => id)
+            .filter(isDefined)
+            .map((id) => {
+                return { messageId: id };
+            });
+        DOWNLOAD_MESSAGE_EXECUTOR.addJobs(userId, jobs);
         if (args.maxPages && pageCount >= args.maxPages) {
-            mailboxEmitter.syncCompleted();
             return;
         }
         mailboxEmitter.messagePageDownloaded(messages.length);
         if (nextPageToken) {
             processNextPage(nextPageToken);
-        } else {
-            mailboxEmitter.syncCompleted();
         }
     };
     processNextPage(undefined);
@@ -66,7 +66,5 @@ export const syncMailbox = async (
     if (!existsSync(cacheDirectory)) {
         mkdirSync(cacheDirectory);
     }
-    SYNC_MAILBOX_EXECUTOR.addJob(userId, {
-        maxPages: options.maxPages || 0,
-    });
+    SYNC_MAILBOX_EXECUTOR.addJobs(userId, [{ maxPages: options.maxPages || 0 }]);
 };

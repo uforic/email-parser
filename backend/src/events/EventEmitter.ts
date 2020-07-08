@@ -2,7 +2,6 @@ import { EventEmitter } from 'events';
 
 const PAGE_DOWNLOADED = 'messagePageDownloaded';
 const MESSAGE_DOWNLOADED = 'messageDownloaded';
-const SYNC_COMPLETED = 'syncCompleted';
 
 class MailboxEmitter extends EventEmitter {
     messagePageDownloaded = (pageLength: number) => {
@@ -11,9 +10,6 @@ class MailboxEmitter extends EventEmitter {
     messageDownloaded = (userId: string, messageId: string) => {
         this.emit(MESSAGE_DOWNLOADED, userId, messageId);
     };
-    syncCompleted = () => {
-        this.emit(SYNC_COMPLETED);
-    };
 
     onMessagePageDownloaded = (callback: (pageLength: number) => void) => {
         this.on(PAGE_DOWNLOADED, callback);
@@ -21,10 +17,6 @@ class MailboxEmitter extends EventEmitter {
 
     onMessageDownloaded = (callback: (userId: string, messageId: string) => void) => {
         this.on(MESSAGE_DOWNLOADED, callback);
-    };
-
-    onSyncCompleted = (callback: () => void) => {
-        this.on(SYNC_COMPLETED, callback);
     };
 }
 

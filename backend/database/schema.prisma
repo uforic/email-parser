@@ -8,11 +8,13 @@ generator client {
 }
 
 model Job {
-  id     Int    @default(autoincrement()) @id
-  type   String
-  args   String
-  status String
-  userId String
+  id        Int    @default(autoincrement()) @id
+  type      String
+  args      String
+  status    String
+  userId    String
+  createdAt Int
+  updatedAt Int
 }
 
 model Message {

@@ -7,6 +7,20 @@
 // START Enums and Input Objects
 //==============================================================
 
+export enum JobStatus {
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  IN_PROGRESS = "IN_PROGRESS",
+  NOT_STARTED = "NOT_STARTED",
+  UNKNOWN = "UNKNOWN",
+}
+
+export enum LinkType {
+  GOOGLE_DOCS = "GOOGLE_DOCS",
+  GOOGLE_DRIVE = "GOOGLE_DRIVE",
+  UNKNOWN = "UNKNOWN",
+}
+
 //==============================================================
 // END Enums and Input Objects
 //==============================================================
