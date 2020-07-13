@@ -16,13 +16,13 @@ export const analyzeEmail = (context: Context, message: gmail_v1.Schema$Message)
 };
 
 export type DetectedLink = {
-    type: string;
+    type: LinkType;
     href: string;
     firstCharPos: number;
 };
 
 export type DetectedTracker = {
-    type: string;
+    type: TrackerType;
     href: string;
     firstCharPos: number;
     domain: string;

@@ -1,12 +1,11 @@
-// A schema is a collection of type definitions (hence "typeDefs")
-// that together define the "shape" of queries that are executed against
-
 import { ForbiddenError } from 'apollo-server-express';
 import { loadMessage, loadMetadata, getPageOfResults, getMostRecentMailboxSyncJob } from '../stores/store';
 import { createGmailContext, createContext } from '../context';
 import { syncMailbox } from '../cmd/sync_mailbox';
 import { getCounter } from '../stores/counter';
-import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../jobs/ProcessMessage';
+import { LINK_ANALYSIS, TRACKER_ANALYSIS, LinkAnalysisData, TrackerAnalysisData } from '../jobs/ProcessMessage';
+import { MailboxQueriesResolvers, JobStatus, MailboxMutationsResolvers } from './resolvers';
+import { isDefined } from '../utils';
 
 export function assertLoggedIn(auth: any): asserts auth {
     if (auth == null) {
@@ -14,80 +13,115 @@ export function assertLoggedIn(auth: any): asserts auth {
     }
 }
 
+const Queries: MailboxQueriesResolvers<ApolloContext> = {
+    getMailboxSyncStatus: async (_parent, _args, context) => {
+        assertLoggedIn(context.auth);
+        const recentSync = await getMostRecentMailboxSyncJob(context.auth.userId);
+        const jobCounter = getCounter(recentSync.id);
+        const status = {
+            id: recentSync.id.toString(),
+            userId: context.auth.userId,
+            createdAt: recentSync.createdAt,
+            updatedAt: recentSync.updatedAt,
+            status: recentSync.status as JobStatus,
+            stats: jobCounter,
+        };
+        return status;
+    },
+    getResultsPage: async (_parent, args, context) => {
+        assertLoggedIn(context.auth);
+        const { results, nextPageToken } = await getPageOfResults(
+            context.auth.userId,
+            PAGE_SIZE,
+            args.token || undefined,
+            args.analysisType || undefined,
+        );
+
+        const transformedResults = results
+            .map((result) => {
+                const { type } = result;
+                switch (type) {
+                    case LINK_ANALYSIS:
+                        return {
+                            messageId: result.messageId,
+                            id: result.id.toString(),
+                            data: { __typename: 'LinkData' as 'LinkData', results: result.data as LinkAnalysisData },
+                        };
+                    case TRACKER_ANALYSIS:
+                        return {
+                            messageId: result.messageId,
+                            id: result.id.toString(),
+                            data: {
+                                __typename: 'TrackingData' as 'TrackingData',
+                                results: result.data as TrackerAnalysisData,
+                            },
+                        };
+                    default:
+                        const typeCheck: never = type;
+                        // @ts-ignore
+                        typeCheck;
+                }
+            })
+            .filter(isDefined);
+        const returnObj = {
+            results: transformedResults,
+            nextToken: nextPageToken || null,
+        };
+        return returnObj;
+    },
+    getMailboxSyncStats: async (_parent, args: { jobId: string }, context) => {
+        assertLoggedIn(context.auth);
+        const jobCounters = getCounter(Number.parseInt(args.jobId));
+        return jobCounters || null;
+    },
+    getMessagePreview: async (_parent, args, context) => {
+        assertLoggedIn(context.auth);
+        const serverContext = createContext();
+        const message = await loadMessage(serverContext, args.messageId);
+        return loadMetadata(message);
+    },
+};
+
+const Mutations: MailboxMutationsResolvers = {
+    syncMailbox: async (_parent, _args, context) => {
+        assertLoggedIn(context.auth);
+        const gmailContext = createGmailContext(context.auth.userId);
+        await syncMailbox(gmailContext, gmailContext.env.cacheDirectory, { maxPages: 0 });
+        return true;
+    },
+};
+
 const PAGE_SIZE = 10;
-// Resolvers define the technique for fetching the types defined in the
-// schema. This resolver retrieves books from the "books" array above.
+
 export const resolvers = {
     Mutation: {
-        mailbox: () => ({
-            syncMailbox: async (_: any, context: ApolloContext) => {
-                assertLoggedIn(context.auth);
-                const gmailContext = createGmailContext(context.auth.userId);
-                await syncMailbox(gmailContext, gmailContext.env.cacheDirectory, { maxPages: 0 });
-                return true;
-            },
-        }),
+        mailbox: () => {
+            return Object.entries(
+                Object.keys(Mutations).map((key) => {
+                    const resolver = Mutations[key];
+                    return [
+                        key,
+                        async (parent: any, context: any, args: any) =>
+                            await resolver(parent, args['variableValues'], context),
+                    ];
+                }),
+            );
+        },
     },
     Query: {
-        mailbox: () => ({
-            getMailboxSyncStatus: async (_: any, context: ApolloContext) => {
-                assertLoggedIn(context.auth);
-                const recentSync = await getMostRecentMailboxSyncJob(context.auth.userId);
-                const jobCounter = getCounter(recentSync.id);
-                const status = {
-                    id: recentSync.id,
-                    userId: context.auth.userId,
-                    createdAt: recentSync.createdAt,
-                    updatedAt: recentSync.updatedAt,
-                    status: recentSync.status,
-                    stats: jobCounter,
-                };
-                return status;
-            },
-            getResultsPage: async (args: { token?: number; analysisType?: string }, context: ApolloContext) => {
-                assertLoggedIn(context.auth);
-
-                const { results, nextPageToken } = await getPageOfResults(
-                    context.auth.userId,
-                    PAGE_SIZE,
-                    args.token,
-                    args.analysisType,
-                );
-
-                const transformedResults = results.map((result) => {
-                    const { type } = result;
-                    switch (type) {
-                        case LINK_ANALYSIS:
-                            return {
-                                messageId: result.messageId,
-                                id: result.id,
-                                data: { __typename: 'LinkData', results: result.data },
-                            };
-                        case TRACKER_ANALYSIS:
-                            return {
-                                messageId: result.messageId,
-                                id: result.id,
-                                data: { __typename: 'TrackingData', results: result.data },
-                            };
-                        default:
-                            const typeCheck: never = type;
-                            // @ts-ignore
-                            typeCheck;
-                    }
-                });
-                const returnObj = {
-                    results: transformedResults,
-                    nextToken: nextPageToken || null,
-                };
-                return returnObj;
-            },
-            getMessagePreview: async (args: { messageId: string }, context: ApolloContext) => {
-                assertLoggedIn(context.auth);
-                const serverContext = createContext();
-                const message = await loadMessage(serverContext, args.messageId);
-                return loadMetadata(message);
-            },
-        }),
+        mailbox: () => {
+            const queries = Object.fromEntries(
+                Object.keys(Queries).map((key) => {
+                    const resolver = Queries[key];
+                    return [
+                        key,
+                        async (parent: any, context: any, args: any) =>
+                            await resolver(parent, args['variableValues'], context),
+                    ];
+                }),
+            );
+            return queries;
+        },
     },
 };
 
