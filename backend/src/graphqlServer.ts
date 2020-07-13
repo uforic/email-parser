@@ -3,9 +3,8 @@ import express, { Request } from 'express';
 import { getOauth2Url, getToken } from './clients/gmail';
 import { createContext, setAccessTokenForUser, createGmailContext } from './context';
 import session from 'express-session';
-import { resetAllJobs } from './store';
+import { resetAllJobs } from './stores/store';
 import { syncMailbox } from './cmd/sync_mailbox';
-import './events/MessageDownloadListener';
 import { resolvers, ApolloContext } from './graphql/graphql';
 import { join } from 'path';
 import { readFileSync } from 'fs';
@@ -50,7 +49,7 @@ app.get('/oauth2callback', async (req, res, next) => {
         session.save(() => {});
         setAccessTokenForUser(userId, access_token as string);
         const context = createGmailContext(userId);
-        syncMailbox(context, userId, context.env.cacheDirectory, {});
+        syncMailbox(context, context.env.cacheDirectory, {});
     }
     res.redirect('http://localhost:8080/mailbox');
     next();

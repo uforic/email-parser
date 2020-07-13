@@ -3,28 +3,45 @@
 // @generated
 // This file was automatically generated and should not be edited.
 
-import { JobStatus, LinkType } from "./globals";
+import { JobStatus, LinkType, TrackerType } from "./globals";
 
 // ====================================================
 // GraphQL query operation: MailboxHome
 // ====================================================
 
+export interface MailboxHome_mailbox_getMailboxSyncStatus_stats_downloadMessage {
+  __typename: "JobStats";
+  NOT_STARTED: number;
+  IN_PROGRESS: number;
+  COMPLETED: number;
+  FAILED: number;
+}
+
+export interface MailboxHome_mailbox_getMailboxSyncStatus_stats_analyzeMessage {
+  __typename: "JobStats";
+  NOT_STARTED: number;
+  IN_PROGRESS: number;
+  COMPLETED: number;
+  FAILED: number;
+}
+
+export interface MailboxHome_mailbox_getMailboxSyncStatus_stats {
+  __typename: "JobCounters";
+  downloadMessage: MailboxHome_mailbox_getMailboxSyncStatus_stats_downloadMessage;
+  analyzeMessage: MailboxHome_mailbox_getMailboxSyncStatus_stats_analyzeMessage;
+}
+
 export interface MailboxHome_mailbox_getMailboxSyncStatus {
   __typename: "MailboxSyncStatus";
+  id: string;
   userId: string;
-  numMessagesSeen: number;
-  numMessagesDownloaded: number;
   updatedAt: number;
   createdAt: number;
   status: JobStatus;
-  isCompleted: boolean;
+  stats: MailboxHome_mailbox_getMailboxSyncStatus_stats | null;
 }
 
-export interface MailboxHome_mailbox_getResultsPage_results_data_TrackingData {
-  __typename: "TrackingData";
-}
-
-export interface MailboxHome_mailbox_getResultsPage_results_data_LinkData_results {
+export interface MailboxHome_mailbox_getResultsPage_results_data_LinkData_linkResults {
   __typename: "LinkDetection";
   type: LinkType;
   href: string;
@@ -32,13 +49,26 @@ export interface MailboxHome_mailbox_getResultsPage_results_data_LinkData_result
 
 export interface MailboxHome_mailbox_getResultsPage_results_data_LinkData {
   __typename: "LinkData";
-  results: MailboxHome_mailbox_getResultsPage_results_data_LinkData_results[];
+  linkResults: MailboxHome_mailbox_getResultsPage_results_data_LinkData_linkResults[];
 }
 
-export type MailboxHome_mailbox_getResultsPage_results_data = MailboxHome_mailbox_getResultsPage_results_data_TrackingData | MailboxHome_mailbox_getResultsPage_results_data_LinkData;
+export interface MailboxHome_mailbox_getResultsPage_results_data_TrackingData_trackingResults {
+  __typename: "TrackerDetection";
+  type: TrackerType;
+  domain: string;
+  href: string;
+}
+
+export interface MailboxHome_mailbox_getResultsPage_results_data_TrackingData {
+  __typename: "TrackingData";
+  trackingResults: MailboxHome_mailbox_getResultsPage_results_data_TrackingData_trackingResults[];
+}
+
+export type MailboxHome_mailbox_getResultsPage_results_data = MailboxHome_mailbox_getResultsPage_results_data_LinkData | MailboxHome_mailbox_getResultsPage_results_data_TrackingData;
 
 export interface MailboxHome_mailbox_getResultsPage_results {
   __typename: "Result";
+  id: string;
   messageId: string;
   data: MailboxHome_mailbox_getResultsPage_results_data;
 }
@@ -61,4 +91,5 @@ export interface MailboxHome {
 
 export interface MailboxHomeVariables {
   nextPageToken?: number | null;
+  analysisType?: string | null;
 }

@@ -1,33 +1,41 @@
-import { markJobFailed, JobType, addJobs, getFreshJobAndMarkInProgress } from '../store';
+import { markJobFailed, JobType, addJobs, getFreshJobAndMarkInProgress, markJobComplete } from '../stores/store';
+import { addCount } from '../stores/counter';
+import { JobStatus } from '../graphql/resolvers';
 
-type Job<JobArgs extends {}> = { jobId: number; jobArgs: JobArgs; userId: string };
+type Job<JobArgs extends {}> = { jobId: number; jobArgs: JobArgs; userId: string; parentId: number | null };
 export class JobExecutor<JobArgs extends {}> {
-    maxConcurrentJobs: number = 1;
-    jobFn: (userId: string, jobArgs: JobArgs) => void;
+    maxConcurrentJobs: number;
+    jobFn: (job: Job<JobArgs>) => void;
     jobType: JobType;
     currentlyRunningJobs = 0;
     constructor(
-        jobFn: (userId: string, jobArgs: JobArgs) => Promise<void>,
+        jobFn: (job: Job<JobArgs>) => Promise<void>,
         jobType: JobType,
-        options?: {
-            maxConcurrentJobs?: number;
+        options: {
+            maxConcurrentJobs: number;
         },
     ) {
         this.jobFn = jobFn;
         this.jobType = jobType;
-        if (options?.maxConcurrentJobs != null) {
-            this.maxConcurrentJobs = options.maxConcurrentJobs;
-        }
+        this.maxConcurrentJobs = options.maxConcurrentJobs || 1;
     }
-    addJobs = async (userId: string, jobArgs: Array<JobArgs>) => {
-        await addJobs(jobArgs.map((args) => ({ userId, type: this.jobType, jobArgs: args })));
+    addJobs = async (userId: string, parentId: number | null, jobArgs: Array<JobArgs>) => {
+        if (parentId != null) {
+            addCount(parentId, this.jobType, JobStatus.NotStarted, jobArgs.length);
+        }
+        await addJobs(jobArgs.map((args) => ({ userId, type: this.jobType, jobArgs: args, parentId })));
         this.processJobs();
     };
     processJob = async (job: Job<JobArgs>) => {
         this.currentlyRunningJobs += 1;
+        const statsId = job.parentId != null ? job.parentId : job.jobId;
         try {
-            await this.jobFn(job.userId, job.jobArgs);
+            addCount(statsId, this.jobType, JobStatus.InProgress, 1);
+            await this.jobFn(job);
+            addCount(statsId, this.jobType, JobStatus.Completed, 1);
+            await markJobComplete(job.jobId);
         } catch (error) {
+            addCount(statsId, this.jobType, JobStatus.Failed, 1);
             await markJobFailed(job.jobId);
             console.error('Error processing job', job, error);
         } finally {
@@ -51,6 +59,7 @@ export class JobExecutor<JobArgs extends {}> {
                 jobArgs: JSON.parse(job.args),
                 jobId: job.id,
                 userId: job.userId,
+                parentId: job.parentId,
             });
         });
     };

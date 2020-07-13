@@ -1,11 +1,24 @@
 type MailboxSyncStatus {
+    id: ID!
     userId: String!
-    numMessagesSeen: Int!
-    numMessagesDownloaded: Int!
     createdAt: Int!
     updatedAt: Int!
-    isCompleted: Boolean!
     status: JobStatus!
+    stats: JobCounters
+}
+
+type JobCounters {
+    downloadMessage: JobStats!
+    syncMailbox: JobStats!
+    analyzeMessage: JobStats!
+}
+
+type JobStats {
+    UNKNOWN: Int!
+    NOT_STARTED: Int!
+    COMPLETED: Int!
+    IN_PROGRESS: Int!
+    FAILED: Int!
 }
 
 enum JobStatus {
@@ -22,6 +35,18 @@ type LinkDetection {
     firstCharPos: Int!
 }
 
+type TrackerDetection {
+    type: TrackerType!
+    domain: String!
+    href: String!
+    firstCharPos: Int!
+}
+
+enum TrackerType {
+    UNKNOWN
+    ONEBYONE
+}
+
 enum LinkType {
     UNKNOWN
     GOOGLE_DOCS
@@ -33,12 +58,13 @@ type LinkData {
 }
 
 type TrackingData {
-    results: [LinkDetection!]!
+    results: [TrackerDetection!]!
 }
 
 union AnalysisData = TrackingData | LinkData
 
 type Result {
+    id: ID!
     messageId: String!
     data: AnalysisData!
 }
@@ -57,14 +83,19 @@ type MessagePreview {
 
 type MailboxQueries {
     getMailboxSyncStatus: MailboxSyncStatus!
-    getResultsPage(token: Int): ResultsPage!
+    getMailboxSyncStats(jobId: ID!): JobCounters
+    getResultsPage(token: Int, analysisType: String): ResultsPage!
     getMessagePreview(messageId: String!): MessagePreview
-    syncMailbox: Boolean!
 }
 
-# The "Query" type is special: it lists all of the available queries that
-# clients can execute, along with the return type for each. In this
-# case, the "books" query returns an array of zero or more Books (defined above).
 type Query {
     mailbox: MailboxQueries!
+}
+
+type Mutation {
+    mailbox: MailboxMutations!
+}
+
+type MailboxMutations {
+    syncMailbox: Boolean!
 }

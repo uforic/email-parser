@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import './App.css';
-import { useQuery, gql } from '@apollo/client';
+import { useQuery, gql, useMutation } from '@apollo/client';
 import {
     MailboxHome,
     MailboxHomeVariables,
     MailboxHome_mailbox_getResultsPage_results_data,
 } from './__generated__/MailboxHome';
 import { MessagePreview, MessagePreviewVariables } from './__generated__/MessagePreview';
-import { LinkType } from './__generated__/globals';
+import { LinkType, JobStatus, TrackerType } from './__generated__/globals';
+import { SyncMailbox } from './__generated__/SyncMailbox';
+import { MailboxStats, MailboxStatsVariables } from './__generated__/MailboxStats';
 
 function Mailbox() {
     const [nextPageToken, setNextPageToken] = useState<number | null>(null);
+    const [analysisType, setAnalysisType] = useState<'linkAnalysis' | 'trackerAnalysis' | null>(null);
     const { loading, data, error } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
-        pollInterval: 1000,
+        pollInterval: 5000,
         variables: {
             nextPageToken,
+            analysisType,
         },
     });
     const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
@@ -49,6 +53,21 @@ function Mailbox() {
                 <div>
                     <div>
                         <h2>Analysis Inbox</h2>
+                        <select
+                            value={analysisType === null ? 'undefined' : analysisType}
+                            name="Analysis Type"
+                            onChange={(event) => {
+                                setAnalysisType(
+                                    event.target.value === 'undefined' ? null : (event.target.value as 'linkAnalysis'),
+                                );
+                                setSelectedMessage(null);
+                            }}
+                        >
+                            <option value="undefined">Undefined</option>
+                            <option value="linkAnalysis">Link analysis</option>
+                            <option value="trackerAnalysis">Tracker analysis</option>
+                        </select>
+
                         <Results data={data} onClickMessage={onClickMessage} />
                     </div>
                     <div>
@@ -72,15 +91,59 @@ function Mailbox() {
 }
 
 const SyncStatus = (props: { data: MailboxHome }) => {
-    if (props.data.mailbox.getMailboxSyncStatus.isCompleted) {
-        return <div>Sync complete!</div>;
+    const [syncMailbox, { loading }] = useMutation<SyncMailbox>(SYNC_MAILBOX_MUTATION);
+    const { data: statsData } = useQuery<MailboxStats, MailboxStatsVariables>(STATS_QUERY, {
+        variables: {
+            jobId: props.data.mailbox.getMailboxSyncStatus.id,
+        },
+        pollInterval: 1000,
+    });
+    const _stats = statsData?.mailbox.getMailboxSyncStats;
+    let stats;
+    if (_stats != null) {
+        stats = {
+            messagedQueuedToDownload:
+                _stats.downloadMessage.IN_PROGRESS - (_stats.downloadMessage.COMPLETED + _stats.downloadMessage.FAILED),
+            messagesDownloaded: _stats.downloadMessage.COMPLETED,
+            messagesDownloadFailed: _stats.downloadMessage.FAILED,
+            messagesQueuedToProcess:
+                _stats.analyzeMessage.IN_PROGRESS - (_stats.analyzeMessage.COMPLETED + _stats.analyzeMessage.FAILED),
+            messagesProcessed: _stats.analyzeMessage.COMPLETED,
+            messagesProcessedFailed: _stats.analyzeMessage.FAILED,
+        };
     }
+
     return (
         <div>
             <div>{props.data.mailbox.getMailboxSyncStatus.userId}</div>
             <div>{props.data.mailbox.getMailboxSyncStatus.status}</div>
-            <div>Job started: {new Date(props.data.mailbox.getMailboxSyncStatus.createdAt).toString()}</div>
-            <div>Job status updated: {new Date(props.data.mailbox.getMailboxSyncStatus.updatedAt).toString()}</div>
+            <div>Job started: {new Date(props.data.mailbox.getMailboxSyncStatus.createdAt * 1000).toString()}</div>
+            <div>
+                Job status updated: {new Date(props.data.mailbox.getMailboxSyncStatus.updatedAt * 1000).toString()}
+            </div>
+            {stats && (
+                <div>
+                    Stats:
+                    <ul>
+                        <li>Messages queued to download: {stats.messagedQueuedToDownload}</li>
+                        <li>Messages downloaded: {stats.messagesDownloaded}</li>
+                        <li>Messages download failed: {stats.messagesDownloadFailed}</li>
+                        <li>Messages queued to process: {stats.messagesQueuedToProcess}</li>
+                        <li>Messages processed: {stats.messagesProcessed}</li>
+                        <li>Messages failed to process: {stats.messagesProcessedFailed}</li>
+                    </ul>
+                </div>
+            )}
+            <button
+                disabled={
+                    [JobStatus.IN_PROGRESS, JobStatus.NOT_STARTED].includes(
+                        props.data.mailbox.getMailboxSyncStatus.status,
+                    ) || loading
+                }
+                onClick={() => syncMailbox()}
+            >
+                Sync mailbox
+            </button>
         </div>
     );
 };
@@ -105,14 +168,43 @@ const linkTypeToDisplay = (linkType: LinkType) => {
     linkType as never;
 };
 
+const trackingTypeToDisplay = (trackerType: TrackerType) => {
+    if (trackerType === TrackerType.ONEBYONE) {
+        return '1x1 pixel';
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    trackerType as never;
+};
+
 const analysisToSummary = (analysisType: MailboxHome_mailbox_getResultsPage_results_data) => {
     if (analysisType.__typename === 'LinkData') {
         return (
             <ul>
-                {analysisType.results.map((data) => {
+                {analysisType.linkResults.map((data, idx) => {
                     return (
-                        <li>
+                        <li key={idx}>
                             <span>{linkTypeToDisplay(data.type)}</span>
+                            <span>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(data.href);
+                                    }}
+                                >
+                                    Copy URL
+                                </button>
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+        );
+    } else if (analysisType.__typename === 'TrackingData') {
+        return (
+            <ul>
+                {analysisType.trackingResults.map((data, idx) => {
+                    return (
+                        <li key={idx}>
+                            <span>{trackingTypeToDisplay(data.type)}</span>
                             <span>
                                 <button
                                     onClick={() => {
@@ -136,7 +228,7 @@ const Results = (props: { data: MailboxHome; onClickMessage: (messageId: string)
         <div>
             {props.data.mailbox.getResultsPage.results.map((result) => {
                 return (
-                    <div id={result.messageId.concat(result.__typename)} style={{ display: 'flex', maxWidth: '800px' }}>
+                    <div key={result.id} style={{ display: 'flex', maxWidth: '800px' }}>
                         <div>{result.messageId}</div>
                         <div>{analysisTypeToDisplay(result.data.__typename)}</div>
                         <div>{analysisToSummary(result.data)}</div>
@@ -183,26 +275,68 @@ const MessagePreviewComponent = (props: { messageId: string }) => {
     );
 };
 
+const STATS_QUERY = gql`
+    query MailboxStats($jobId: ID!) {
+        mailbox {
+            getMailboxSyncStats(jobId: $jobId) {
+                downloadMessage {
+                    NOT_STARTED
+                    IN_PROGRESS
+                    COMPLETED
+                    FAILED
+                }
+                analyzeMessage {
+                    NOT_STARTED
+                    IN_PROGRESS
+                    COMPLETED
+                    FAILED
+                }
+            }
+        }
+    }
+`;
+
 const QUERY = gql`
-    query MailboxHome($nextPageToken: Int) {
+    query MailboxHome($nextPageToken: Int, $analysisType: String) {
         mailbox {
             getMailboxSyncStatus {
+                id
                 userId
-                numMessagesSeen
-                numMessagesDownloaded
                 updatedAt
                 createdAt
                 status
-                isCompleted
+                stats {
+                    downloadMessage {
+                        NOT_STARTED
+                        IN_PROGRESS
+                        COMPLETED
+                        FAILED
+                    }
+                    analyzeMessage {
+                        NOT_STARTED
+                        IN_PROGRESS
+                        COMPLETED
+                        FAILED
+                    }
+                }
             }
-            getResultsPage(token: $nextPageToken) {
+            getResultsPage(token: $nextPageToken, analysisType: $analysisType) {
                 nextToken
                 results {
+                    id
                     messageId
                     data {
                         ... on LinkData {
-                            results {
+                            linkResults: results {
                                 type
+                                href
+                                type
+                            }
+                        }
+                        ... on TrackingData {
+                            trackingResults: results {
+                                type
+                                domain
                                 href
                                 type
                             }
@@ -223,6 +357,14 @@ const MESSAGE_PREVIEW_QUERY = gql`
                 from
                 snippet
             }
+        }
+    }
+`;
+
+const SYNC_MAILBOX_MUTATION = gql`
+    mutation SyncMailbox {
+        mailbox {
+            syncMailbox
         }
     }
 `;

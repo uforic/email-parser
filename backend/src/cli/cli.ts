@@ -88,7 +88,7 @@ program
         const gmailCredentials = JSON.parse(readFileSync(tokenPath).toString());
         const context = createContext();
         const gmailContext = { ...context, gmailCredentials };
-        await syncMailbox(gmailContext, 'matt.sprague@gmail.com', directoryPath, {
+        await syncMailbox(gmailContext, directoryPath, {
             maxPages,
         });
     });

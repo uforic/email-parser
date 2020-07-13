@@ -21,6 +21,11 @@ export enum LinkType {
   UNKNOWN = "UNKNOWN",
 }
 
+export enum TrackerType {
+  ONEBYONE = "ONEBYONE",
+  UNKNOWN = "UNKNOWN",
+}
+
 //==============================================================
 // END Enums and Input Objects
 //==============================================================

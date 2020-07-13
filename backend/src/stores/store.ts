@@ -1,23 +1,9 @@
-import { mailboxEmitter } from './events/EventEmitter';
-import { Context } from './context';
+import { Context } from '../context';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { gmail_v1 } from 'googleapis';
 import sqlstring from 'sqlstring';
-import { JobStatus } from './graphql/resolvers';
-
-export const state = {
-    numberOfMessagesSeen: 0,
-    numberOfMessagesDownloaded: 0,
-    syncCompleted: false,
-};
-
-mailboxEmitter.onMessagePageDownloaded((numMessages) => {
-    state.numberOfMessagesSeen += numMessages;
-});
-mailboxEmitter.onMessageDownloaded(() => {
-    state.numberOfMessagesDownloaded++;
-});
+import { JobStatus } from '../graphql/resolvers';
 
 export const loadMessage = (context: Context, messageId: string): gmail_v1.Schema$Message => {
     return JSON.parse(readFileSync(join(context.env.cacheDirectory, messageId + '.json')).toString());
@@ -63,15 +49,25 @@ export type JobType = typeof DOWNLOAD_MESSAGE | typeof SYNC_MAILBOX | typeof ANA
 
 import { PrismaClient } from '@prisma/client';
 import AsyncLock from 'async-lock';
-import { LinkAnalysisData } from './events/MessageDownloadListener';
+import { LinkAnalysisData, TrackerAnalysisData, LINK_ANALYSIS, TRACKER_ANALYSIS } from '../jobs/ProcessMessage';
 const _prismaClient = new PrismaClient();
 
 const prismaLock = new AsyncLock({ maxPending: 10000 });
 
-const prismaClient = async <K>(lockNames: Array<string>, fn: (prismaClient: PrismaClient) => Promise<K>) => {
-    return await prismaLock.acquire(lockNames, async () => {
-        return await fn(_prismaClient);
-    });
+const prismaClient = async <K>(
+    lockNames: Array<string>,
+    fn: (prismaClient: PrismaClient) => Promise<K>,
+    skipQueue: boolean = false,
+) => {
+    return await prismaLock.acquire(
+        lockNames,
+        async () => {
+            return await fn(_prismaClient);
+        },
+        {
+            skipQueue,
+        },
+    );
 };
 
 const JOB_LOCK = 'job';
@@ -81,18 +77,22 @@ const getIntDate = () => Math.round(Date.now() / 1000);
 
 export const getMostRecentMailboxSyncJob = async (userId: string) => {
     return (
-        await prismaClient([JOB_LOCK], async (prismaClient) => {
-            return await prismaClient.job.findMany({
-                where: {
-                    type: SYNC_MAILBOX,
-                    userId,
-                },
-                take: 1,
-                orderBy: {
-                    createdAt: 'desc',
-                },
-            });
-        })
+        await prismaClient(
+            [JOB_LOCK],
+            async (prismaClient) => {
+                return await prismaClient.job.findMany({
+                    where: {
+                        type: SYNC_MAILBOX,
+                        userId,
+                    },
+                    take: 1,
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                });
+            },
+            true,
+        )
     )[0];
 };
 
@@ -153,19 +153,19 @@ export const getFreshJobAndMarkInProgress = async (jobType: JobType, take: numbe
     });
 };
 
-export const addJobs = async (jobs: Array<{ userId: string; type: JobType; jobArgs: {} }>) => {
+export const addJobs = async (jobs: Array<{ userId: string; type: JobType; jobArgs: {}; parentId: number | null }>) => {
     await prismaClient([JOB_LOCK], async (prismaClient) => {
         const createdDate = getIntDate();
         const jobList = jobs
             .map((job) => {
                 return `('${JSON.stringify(job.jobArgs)}', ${sqlstring.escape(job.type)}, ${sqlstring.escape(
                     NOT_STARTED,
-                )}, ${sqlstring.escape(job.userId)}, ${createdDate}, ${createdDate})`;
+                )}, ${sqlstring.escape(job.userId)}, ${createdDate}, ${createdDate}, ${job.parentId})`;
             })
             .join(',');
 
         const result: number = await prismaClient.executeRaw(`
-            INSERT INTO job (args, type, status, userId, createdAt, updatedAt)
+            INSERT INTO job (args, type, status, userId, createdAt, updatedAt, parentId)
             VALUES 
                 ${jobList}
             ;
@@ -206,7 +206,12 @@ export const storeResult = async (userId: string, messageId: string, type: strin
     });
 };
 
-export const getPageOfResults = async (userId: string, pageSize: number, previousToken?: number) => {
+export const getPageOfResults = async (
+    userId: string,
+    pageSize: number,
+    previousToken: number | undefined = undefined,
+    analysisType: string | undefined = undefined,
+) => {
     return await prismaClient([RESULT_LOCK], async (prismaClient) => {
         const _results = await prismaClient.result.findMany({
             take: pageSize + 1,
@@ -215,6 +220,7 @@ export const getPageOfResults = async (userId: string, pageSize: number, previou
             },
             where: {
                 userId,
+                type: analysisType || undefined,
             },
             cursor:
                 previousToken != null
@@ -225,7 +231,20 @@ export const getPageOfResults = async (userId: string, pageSize: number, previou
         });
 
         const results = _results.map((result) => {
-            return { ...result, data: JSON.parse(result.data) as LinkAnalysisData };
+            if (result.type === LINK_ANALYSIS) {
+                return {
+                    ...result,
+                    type: result.type as typeof LINK_ANALYSIS,
+                    data: JSON.parse(result.data) as LinkAnalysisData,
+                };
+            } else if (result.type === TRACKER_ANALYSIS) {
+                return {
+                    ...result,
+                    type: result.type as typeof TRACKER_ANALYSIS,
+                    data: JSON.parse(result.data) as TrackerAnalysisData,
+                };
+            }
+            throw new Error("Can't load unrecognized analysis type.");
         });
 
         return {
