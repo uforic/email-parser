@@ -13,6 +13,8 @@ export interface MessagePreview_mailbox_getMessagePreview {
   to: string;
   from: string;
   snippet: string;
+  id: string;
+  matchPreview: string | null;
 }
 
 export interface MessagePreview_mailbox {
@@ -26,4 +28,5 @@ export interface MessagePreview {
 
 export interface MessagePreviewVariables {
   messageId: string;
+  charPos?: number | null;
 }

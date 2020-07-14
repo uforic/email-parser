@@ -8,6 +8,7 @@ import { syncMailbox } from './cmd/sync_mailbox';
 import { resolvers, ApolloContext } from './graphql/graphql';
 import { join } from 'path';
 import { readFileSync } from 'fs';
+import startJobQueues from './jobs/startJobQueues';
 
 const apolloServer = new ApolloServer({
     typeDefs: readFileSync(join(__dirname, '..', 'schema.graphql'), 'utf8').toString(),
@@ -62,3 +63,4 @@ app.get('/auth/gmail', (_, res) => {
 });
 
 resetAllJobs();
+startJobQueues();

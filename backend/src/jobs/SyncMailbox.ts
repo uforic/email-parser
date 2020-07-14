@@ -25,12 +25,11 @@ export const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(
             if (maxPages && pageCount >= maxPages) {
                 return;
             }
-            // addCount(userId, 'messageProcessed', messages.length);
             if (nextPageToken) {
-                processNextPage(nextPageToken);
+                await processNextPage(nextPageToken);
             }
         };
-        processNextPage(undefined);
+        await processNextPage(undefined);
     },
     SYNC_MAILBOX,
     { maxConcurrentJobs: 1 },

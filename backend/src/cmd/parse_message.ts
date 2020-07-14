@@ -4,11 +4,13 @@ import { Context } from '../context';
 import { isDefined } from '../utils';
 import { LinkType, TrackerType } from '../graphql/resolvers';
 import { URL } from 'url';
+import { checkDriveLink } from './check_drive_link';
 
 export const analyzeEmail = (context: Context, message: gmail_v1.Schema$Message) => {
     if (!message.payload) {
         return { linkResults: [], trackerResults: [] };
     }
+
     return {
         linkResults: parseMessagePartForLinks(context, message.payload),
         trackerResults: parseMessagePartForTrackers(context, message.payload),
@@ -46,11 +48,19 @@ const imageAnalyzer = (linkElement: HTMLElement) => {
     if (!height || !width || !href) {
         return;
     }
-    if (height === '1' && width === '1')
-        return {
-            domain: new URL(href).hostname,
-            href,
-        };
+    try {
+        const hostname = new URL(href).hostname;
+        if (height === '1' && width === '1') {
+            return {
+                domain: hostname,
+                href,
+            };
+        }
+    } catch (error) {
+        // if the tracking pixel image is not a well formed URL,
+        // then assume it can't be malicious
+        return undefined;
+    }
     return undefined;
 };
 
@@ -81,9 +91,11 @@ const parseMessagePartForLinks = (context: Context, part: gmail_v1.Schema$Messag
             links
                 .map((link) => linkAnalyzer(config.urlRegex, link))
                 .filter(isDefined)
-                .map(
-                    (match) => ({ href: match, type: config.type, firstCharPos: text.indexOf(match) } as DetectedLink),
-                ),
+                .map((match) => ({ href: match, type: config.type, firstCharPos: text.indexOf(match) } as DetectedLink))
+                .filter(async (match) => {
+                    const checkResults = await checkDriveLink(context, match.href);
+                    return checkResults.ok === true;
+                }),
         );
         return detectedLinks;
     } else if (

@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "private": true,
     "dependencies": {
-        "@apollo/client": "^3.0.0-rc.10",
+        "@apollo/client": "^3.0.0-rc.13",
         "@testing-library/jest-dom": "^4.2.4",
         "@testing-library/react": "^9.3.2",
         "@testing-library/user-event": "^7.1.2",
@@ -42,6 +42,6 @@
         ]
     },
     "devDependencies": {
-        "apollo": "^2.28.3"
+        "apollo": "^2.29.1"
     }
 }

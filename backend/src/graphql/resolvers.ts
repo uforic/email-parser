@@ -99,10 +99,12 @@ export type ResultsPage = {
 
 export type MessagePreview = {
   __typename?: 'MessagePreview';
+  id: Scalars['ID'];
   subject: Scalars['String'];
   from: Scalars['String'];
   to: Scalars['String'];
   snippet: Scalars['String'];
+  matchPreview?: Maybe<Scalars['String']>;
 };
 
 export type MailboxQueries = {
@@ -127,6 +129,7 @@ export type MailboxQueriesGetResultsPageArgs = {
 
 export type MailboxQueriesGetMessagePreviewArgs = {
   messageId: Scalars['String'];
+  charPos?: Maybe<Scalars['Int']>;
 };
 
 export type Query = {
@@ -339,10 +342,12 @@ export type ResultsPageResolvers<ContextType = any, ParentType extends Resolvers
 }>;
 
 export type MessagePreviewResolvers<ContextType = any, ParentType extends ResolversParentTypes['MessagePreview'] = ResolversParentTypes['MessagePreview']> = ResolversObject<{
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   subject?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   from?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   to?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   snippet?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  matchPreview?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 }>;
 

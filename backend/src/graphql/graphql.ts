@@ -6,6 +6,7 @@ import { getCounter } from '../stores/counter';
 import { LINK_ANALYSIS, TRACKER_ANALYSIS, LinkAnalysisData, TrackerAnalysisData } from '../jobs/ProcessMessage';
 import { MailboxQueriesResolvers, JobStatus, MailboxMutationsResolvers } from './resolvers';
 import { isDefined } from '../utils';
+import { getMessagePreview } from '../cmd/get_html_preview';
 
 export function assertLoggedIn(auth: any): asserts auth {
     if (auth == null) {
@@ -30,11 +31,12 @@ const Queries: MailboxQueriesResolvers<ApolloContext> = {
     },
     getResultsPage: async (_parent, args, context) => {
         assertLoggedIn(context.auth);
+        console.log('RESULTS PAGE ARGS', args);
         const { results, nextPageToken } = await getPageOfResults(
             context.auth.userId,
             PAGE_SIZE,
-            args.token || undefined,
-            args.analysisType || undefined,
+            args.token != null ? args.token : undefined,
+            args.analysisType != null ? args.analysisType : undefined,
         );
 
         const transformedResults = results
@@ -78,7 +80,13 @@ const Queries: MailboxQueriesResolvers<ApolloContext> = {
         assertLoggedIn(context.auth);
         const serverContext = createContext();
         const message = await loadMessage(serverContext, args.messageId);
-        return loadMetadata(message);
+        let matchPreview;
+        if (args.charPos != null && args.charPos >= 0) {
+            matchPreview = getMessagePreview(serverContext, message, args.charPos);
+        }
+
+        const metadata = { ...loadMetadata(message), matchPreview: matchPreview?.matchPreview };
+        return metadata;
     },
 };
 
@@ -96,14 +104,10 @@ const PAGE_SIZE = 10;
 export const resolvers = {
     Mutation: {
         mailbox: () => {
-            return Object.entries(
+            return Object.fromEntries(
                 Object.keys(Mutations).map((key) => {
                     const resolver = Mutations[key];
-                    return [
-                        key,
-                        async (parent: any, context: any, args: any) =>
-                            await resolver(parent, args['variableValues'], context),
-                    ];
+                    return [key, async (args: any, context: any) => await resolver({}, args, context)];
                 }),
             );
         },
@@ -115,8 +119,9 @@ export const resolvers = {
                     const resolver = Queries[key];
                     return [
                         key,
-                        async (parent: any, context: any, args: any) =>
-                            await resolver(parent, args['variableValues'], context),
+                        async (args: any, context: any) => {
+                            return await resolver({}, args, context);
+                        },
                     ];
                 }),
             );

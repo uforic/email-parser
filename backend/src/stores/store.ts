@@ -5,19 +5,23 @@ import { gmail_v1 } from 'googleapis';
 import sqlstring from 'sqlstring';
 import { JobStatus } from '../graphql/resolvers';
 
-export const loadMessage = (context: Context, messageId: string): gmail_v1.Schema$Message => {
-    return JSON.parse(readFileSync(join(context.env.cacheDirectory, messageId + '.json')).toString());
+export const loadMessage = (context: Context, messageId: string): gmail_v1.Schema$Message & { id: string } => {
+    return {
+        ...JSON.parse(readFileSync(join(context.env.cacheDirectory, messageId + '.json')).toString()),
+        id: messageId,
+    };
 };
 
 export const loadMetadata = (
-    message: gmail_v1.Schema$Message,
-): { subject: string; from: string; to: string; snippet: string } => {
+    message: gmail_v1.Schema$Message & { id: string },
+): { id: string; subject: string; from: string; to: string; snippet: string } => {
     const headers = message.payload?.headers;
     const metadata = {
         subject: '',
         from: '',
         to: '',
         snippet: '',
+        id: message.id,
     };
     if (headers) {
         headers.forEach((header) => {
@@ -71,7 +75,7 @@ const prismaClient = async <K>(
 };
 
 const JOB_LOCK = 'job';
-const RESULT_LOCK = 'result';
+const RESULT_LOCK = 'job';
 
 const getIntDate = () => Math.round(Date.now() / 1000);
 

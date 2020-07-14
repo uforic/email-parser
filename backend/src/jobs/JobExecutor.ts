@@ -63,4 +63,8 @@ export class JobExecutor<JobArgs extends {}> {
             });
         });
     };
+
+    start = async () => {
+        return await this.processJobs();
+    };
 }

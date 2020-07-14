@@ -75,17 +75,19 @@ type ResultsPage {
 }
 
 type MessagePreview {
+    id: ID!
     subject: String!
     from: String!
     to: String!
     snippet: String!
+    matchPreview: String
 }
 
 type MailboxQueries {
     getMailboxSyncStatus: MailboxSyncStatus!
     getMailboxSyncStats(jobId: ID!): JobCounters
     getResultsPage(token: Int, analysisType: String): ResultsPage!
-    getMessagePreview(messageId: String!): MessagePreview
+    getMessagePreview(messageId: String!, charPos: Int): MessagePreview
 }
 
 type Query {

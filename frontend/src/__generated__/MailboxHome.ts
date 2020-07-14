@@ -9,28 +9,6 @@ import { JobStatus, LinkType, TrackerType } from "./globals";
 // GraphQL query operation: MailboxHome
 // ====================================================
 
-export interface MailboxHome_mailbox_getMailboxSyncStatus_stats_downloadMessage {
-  __typename: "JobStats";
-  NOT_STARTED: number;
-  IN_PROGRESS: number;
-  COMPLETED: number;
-  FAILED: number;
-}
-
-export interface MailboxHome_mailbox_getMailboxSyncStatus_stats_analyzeMessage {
-  __typename: "JobStats";
-  NOT_STARTED: number;
-  IN_PROGRESS: number;
-  COMPLETED: number;
-  FAILED: number;
-}
-
-export interface MailboxHome_mailbox_getMailboxSyncStatus_stats {
-  __typename: "JobCounters";
-  downloadMessage: MailboxHome_mailbox_getMailboxSyncStatus_stats_downloadMessage;
-  analyzeMessage: MailboxHome_mailbox_getMailboxSyncStatus_stats_analyzeMessage;
-}
-
 export interface MailboxHome_mailbox_getMailboxSyncStatus {
   __typename: "MailboxSyncStatus";
   id: string;
@@ -38,13 +16,13 @@ export interface MailboxHome_mailbox_getMailboxSyncStatus {
   updatedAt: number;
   createdAt: number;
   status: JobStatus;
-  stats: MailboxHome_mailbox_getMailboxSyncStatus_stats | null;
 }
 
 export interface MailboxHome_mailbox_getResultsPage_results_data_LinkData_linkResults {
   __typename: "LinkDetection";
   type: LinkType;
   href: string;
+  firstCharPos: number;
 }
 
 export interface MailboxHome_mailbox_getResultsPage_results_data_LinkData {
@@ -57,6 +35,7 @@ export interface MailboxHome_mailbox_getResultsPage_results_data_TrackingData_tr
   type: TrackerType;
   domain: string;
   href: string;
+  firstCharPos: number;
 }
 
 export interface MailboxHome_mailbox_getResultsPage_results_data_TrackingData {
