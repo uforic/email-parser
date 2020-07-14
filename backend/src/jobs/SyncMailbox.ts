@@ -2,7 +2,7 @@ import { createGmailContext } from '../context';
 import { listMessages } from '../clients/gmail';
 import { assertDefined, isDefined } from '../utils';
 import { JobExecutor } from '../jobs/JobExecutor';
-import { SYNC_MAILBOX } from '../stores/store';
+import { SYNC_MAILBOX } from '../types';
 import { DOWNLOAD_MESSAGE_EXECUTOR } from './DownloadMessage';
 
 export const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(

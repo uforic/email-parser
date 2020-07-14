@@ -221,11 +221,14 @@ const analysisToSummary = (analysisType: MailboxHome_mailbox_getResultsPage_resu
 
 const getFirstCharPos = (analysis: MailboxHome_mailbox_getResultsPage_results_data) => {
     if (analysis.__typename === 'LinkData') {
-        return analysis.linkResults.find((result) => result.firstCharPos != null && result.firstCharPos >= 0)
-            ?.firstCharPos;
+        return analysis.linkResults
+            .map((result) => result.firstCharPos)
+            .filter((charPos) => charPos != null && charPos >= 0)[0];
     } else if (analysis.__typename === 'TrackingData') {
-        return analysis.trackingResults.find((result) => result.firstCharPos != null && result.firstCharPos >= 0)
-            ?.firstCharPos;
+        console.log(analysis.trackingResults.map((result) => result.firstCharPos));
+        return analysis.trackingResults
+            .map((result) => result.firstCharPos)
+            .filter((charPos) => charPos != null && charPos >= 0)[0];
     }
     return undefined;
 };
@@ -272,12 +275,29 @@ const MessagePreviewComponent = (props: { message: { id: string; charPos?: numbe
     }
     const previewData = data.mailbox.getMessagePreview;
     return (
-        <div>
-            <div>From: {previewData.from}</div>
-            <div>To: {previewData.to}</div>
-            <div>Subject: {previewData.subject}</div>
-            <div>Message Preview: {previewData.snippet}</div>
-            {previewData.matchPreview && <div>Match Preview: {previewData.matchPreview}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div>
+                <h3>From:</h3>
+                <div>{previewData.from}</div>
+            </div>
+            <div>
+                <h3>To:</h3>
+                <div>{previewData.to}</div>
+            </div>
+            <div>
+                <h3>Subject:</h3>
+                <div>{previewData.subject}</div>
+            </div>
+            <div>
+                <h3>Message Preview:</h3>
+                <div>{previewData.snippet}</div>
+            </div>
+            {previewData.matchPreview && (
+                <div>
+                    <h3>Match Preview:</h3>
+                    <div>{previewData.matchPreview}</div>
+                </div>
+            )}
         </div>
     );
 };

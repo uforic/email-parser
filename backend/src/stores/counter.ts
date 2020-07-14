@@ -1,4 +1,4 @@
-import { JobType } from './store';
+import { JobType } from '../types';
 import { JobStatus } from '../graphql/resolvers';
 
 const INIT_JOB_STATS = {

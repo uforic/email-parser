@@ -2,9 +2,14 @@ import { gmail_v1 } from 'googleapis';
 import { parse, HTMLElement } from 'node-html-parser';
 import { Context } from '../context';
 import { isDefined } from '../utils';
-import { LinkType, TrackerType } from '../graphql/resolvers';
+
 import { URL } from 'url';
-import { checkDriveLink } from './check_drive_link';
+import { checkDriveLink as _checkDriveLink } from './check_drive_link';
+import memoize from 'lodash.memoize';
+import { LinkType, TrackerType } from '../graphql/resolvers';
+import { DetectedTracker, DetectedLink } from '../types';
+
+const checkDriveLink = memoize(_checkDriveLink);
 
 export const analyzeEmail = (context: Context, message: gmail_v1.Schema$Message) => {
     if (!message.payload) {
@@ -15,19 +20,6 @@ export const analyzeEmail = (context: Context, message: gmail_v1.Schema$Message)
         linkResults: parseMessagePartForLinks(context, message.payload),
         trackerResults: parseMessagePartForTrackers(context, message.payload),
     };
-};
-
-export type DetectedLink = {
-    type: LinkType;
-    href: string;
-    firstCharPos: number;
-};
-
-export type DetectedTracker = {
-    type: TrackerType;
-    href: string;
-    firstCharPos: number;
-    domain: string;
 };
 
 const linkAnalyzer = (urlRegex: RegExp, linkElement: HTMLElement) => {
@@ -93,7 +85,7 @@ const parseMessagePartForLinks = (context: Context, part: gmail_v1.Schema$Messag
                 .filter(isDefined)
                 .map((match) => ({ href: match, type: config.type, firstCharPos: text.indexOf(match) } as DetectedLink))
                 .filter(async (match) => {
-                    const checkResults = await checkDriveLink(context, match.href);
+                    const checkResults = await checkDriveLink(match.href);
                     return checkResults.ok === true;
                 }),
         );
@@ -121,6 +113,7 @@ const parseMessagePartForTrackers = (context: Context, part: gmail_v1.Schema$Mes
 
         const buff = Buffer.from(emailBody, 'base64');
         const text = buff.toString('ascii');
+        // console.log('TEXT/HTML', text);
         const rootElement = parse(text);
         const images = rootElement.querySelectorAll('img');
         const detectedTrackers = images

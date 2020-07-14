@@ -1,4 +1,5 @@
-import { markJobFailed, JobType, addJobs, getFreshJobAndMarkInProgress, markJobComplete } from '../stores/store';
+import { markJobFailed, addJobs, getFreshJobAndMarkInProgress, markJobComplete } from '../stores/store';
+import { JobType } from '../types';
 import { addCount } from '../stores/counter';
 import { JobStatus } from '../graphql/resolvers';
 

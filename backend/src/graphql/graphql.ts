@@ -3,10 +3,11 @@ import { loadMessage, loadMetadata, getPageOfResults, getMostRecentMailboxSyncJo
 import { createGmailContext, createContext } from '../context';
 import { syncMailbox } from '../cmd/sync_mailbox';
 import { getCounter } from '../stores/counter';
-import { LINK_ANALYSIS, TRACKER_ANALYSIS, LinkAnalysisData, TrackerAnalysisData } from '../jobs/ProcessMessage';
+import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
 import { MailboxQueriesResolvers, JobStatus, MailboxMutationsResolvers } from './resolvers';
 import { isDefined } from '../utils';
 import { getMessagePreview } from '../cmd/get_html_preview';
+import { TrackerAnalysisData, LinkAnalysisData } from '../types';
 
 export function assertLoggedIn(auth: any): asserts auth {
     if (auth == null) {

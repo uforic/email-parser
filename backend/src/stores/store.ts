@@ -4,6 +4,10 @@ import { join } from 'path';
 import { gmail_v1 } from 'googleapis';
 import sqlstring from 'sqlstring';
 import { JobStatus } from '../graphql/resolvers';
+import { PrismaClient } from '@prisma/client';
+import AsyncLock from 'async-lock';
+import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
+import { LinkAnalysisData, TrackerAnalysisData, SYNC_MAILBOX, JobType } from '../types';
 
 export const loadMessage = (context: Context, messageId: string): gmail_v1.Schema$Message & { id: string } => {
     return {
@@ -45,15 +49,6 @@ const NOT_STARTED = JobStatus.NotStarted;
 const IN_PROGRESS = JobStatus.InProgress;
 const FAILED = JobStatus.Failed;
 
-export const DOWNLOAD_MESSAGE = 'downloadMessage';
-export const SYNC_MAILBOX = 'syncMailbox';
-export const ANALYZE_MESSAGE = 'analyzeMessage';
-
-export type JobType = typeof DOWNLOAD_MESSAGE | typeof SYNC_MAILBOX | typeof ANALYZE_MESSAGE;
-
-import { PrismaClient } from '@prisma/client';
-import AsyncLock from 'async-lock';
-import { LinkAnalysisData, TrackerAnalysisData, LINK_ANALYSIS, TRACKER_ANALYSIS } from '../jobs/ProcessMessage';
 const _prismaClient = new PrismaClient();
 
 const prismaLock = new AsyncLock({ maxPending: 10000 });

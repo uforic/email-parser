@@ -11,7 +11,7 @@ export const getMessagePreview = (context: Context, message: gmail_v1.Schema$Mes
     };
 };
 
-const LOOK_AHEAD = 100;
+const LOOK_AHEAD = 200;
 
 const getPreviewAroundCharPos = (
     context: Context,
@@ -26,7 +26,9 @@ const getPreviewAroundCharPos = (
         }
 
         const buff = Buffer.from(emailBody, 'base64');
-        const text = buff.toString('ascii');
+
+        const text = buff.toString('utf8');
+        console.log('EXTRACTING FROM HTML', charPos, text.length);
         return text.slice(charPos - LOOK_AHEAD, charPos + LOOK_AHEAD);
     } else if (
         part.mimeType === 'multipart/mixed' ||
@@ -36,9 +38,9 @@ const getPreviewAroundCharPos = (
         if (!part.parts) {
             return undefined;
         }
-        return part.parts.map((part: gmail_v1.Schema$MessagePart) =>
-            getPreviewAroundCharPos(context, part, charPos),
-        )[0];
+        return part.parts
+            .map((part: gmail_v1.Schema$MessagePart) => getPreviewAroundCharPos(context, part, charPos))
+            .filter(Boolean)[0];
     }
     return undefined;
 };

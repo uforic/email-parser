@@ -3,7 +3,7 @@ import { getMessage } from '../clients/gmail';
 import { writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { JobExecutor } from '../jobs/JobExecutor';
-import { DOWNLOAD_MESSAGE } from '../stores/store';
+import { DOWNLOAD_MESSAGE } from '../types';
 import { PROCESS_MESSAGE_EXECUTOR } from './ProcessMessage';
 
 type DownloadMessageArgs = {

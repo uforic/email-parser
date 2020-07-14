@@ -1,12 +1,9 @@
 import { JobExecutor } from '../jobs/JobExecutor';
-import { DetectedLink, analyzeEmail, DetectedTracker } from '../cmd/parse_message';
+import { analyzeEmail } from '../cmd/parse_message';
 import { createContext } from '../context';
-import { loadMessage, storeResult, ANALYZE_MESSAGE } from '../stores/store';
-
-export const LINK_ANALYSIS = 'linkAnalysis';
-export const TRACKER_ANALYSIS = 'trackerAnalysis';
-export type LinkAnalysisData = Array<DetectedLink>;
-export type TrackerAnalysisData = Array<DetectedTracker>;
+import { loadMessage, storeResult } from '../stores/store';
+import { ANALYZE_MESSAGE } from '../types';
+import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
 
 export const PROCESS_MESSAGE_EXECUTOR = new JobExecutor<{ messageId: string }>(
     async (job) => {

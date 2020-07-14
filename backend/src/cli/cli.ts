@@ -69,8 +69,7 @@ program
     .description('check a url to see if it is accessible')
     .requiredOption('-u, --url <url>', 'url to check')
     .action(async ({ url }) => {
-        const context = createContext();
-        const linkStatus = await checkDriveLink(context, url);
+        const linkStatus = await checkDriveLink(url);
         console.log(`Link result for ${url} is ${JSON.stringify(linkStatus)}`);
     });
 
