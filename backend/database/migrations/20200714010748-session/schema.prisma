@@ -1,6 +1,6 @@
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url = "***"
 }
 
 generator client {
@@ -33,9 +33,7 @@ model Result {
 }
 
 model Session {
-  id        Int     @default(autoincrement()) @id
-  sid       String
-  session   String
-  createdAt Int
-  userId    String?
+  id      Int    @default(autoincrement()) @id
+  sid     String
+  session String
 }

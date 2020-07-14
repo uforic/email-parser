@@ -93,7 +93,7 @@ const Queries: QueryResolvers<ApolloContext> = {
 const Mutations: MailboxMutationsResolvers = {
     syncMailbox: async (_parent, _args, context) => {
         assertLoggedIn(context.auth);
-        const gmailContext = createGmailContext(context.auth.userId);
+        const gmailContext = await createGmailContext(context.auth.userId);
         await syncMailbox(gmailContext, gmailContext.env.cacheDirectory, { maxPages: 0 });
         return true;
     },

@@ -8,7 +8,7 @@ import { DOWNLOAD_MESSAGE_EXECUTOR } from './DownloadMessage';
 export const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(
     async (job) => {
         let pageCount = 0;
-        const context = createGmailContext(job.userId);
+        const context = await createGmailContext(job.userId);
         const processNextPage = async (nextToken: string | undefined) => {
             const { maxPages } = job.jobArgs;
             console.log('PROCESSING PAGE', pageCount);

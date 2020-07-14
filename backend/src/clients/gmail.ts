@@ -26,12 +26,15 @@ export const getToken = async (context: Context, code: string) => {
     const oauth2Client = getOauth2Client(context);
     const { tokens } = await oauth2Client.getToken(code);
     const decodedIdToken: { email: string } = jwtDecode(tokens.id_token as string);
-    return { access_token: tokens.access_token, userId: decodedIdToken.email };
+    return { access_token: tokens.access_token, userId: decodedIdToken.email, refresh_token: tokens.refresh_token };
 };
 
 const getGmailClient = (context: GmailContext) => {
     const oauth2Client = getOauth2Client(context);
-    oauth2Client.setCredentials({ access_token: context.gmailCredentials.accessToken });
+    oauth2Client.setCredentials({
+        access_token: context.gmailCredentials.accessToken,
+        refresh_token: context.gmailCredentials.refreshToken,
+    });
     const gmailClient = google.gmail({
         auth: oauth2Client,
         version: 'v1',

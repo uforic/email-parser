@@ -1,4 +1,5 @@
 import { getEnvVars, EnvVars } from './env';
+import { getSavedSessionByUser } from './stores/store';
 
 export interface Context {
     env: EnvVars;
@@ -8,6 +9,7 @@ export interface GmailContext extends Context {
     gmailCredentials: {
         userId: string;
         accessToken: string;
+        refreshToken: string;
     };
 }
 
@@ -19,20 +21,18 @@ export const createContext = () => {
 
 const tokens: Record<string, string> = {};
 
-export const setAccessTokenForUser = (userId: string, accessToken: string) => {
-    tokens[userId] = accessToken;
-};
-
-const getAccessTokenForUser = (userId: string) => {
-    return tokens[userId];
-};
-
-export const createGmailContext = (userId: string): GmailContext => {
+export const createGmailContext = async (userId: string): Promise<GmailContext> => {
+    const session = await getSavedSessionByUser(userId);
+    if (!session) {
+        throw new Error(`No user session stored for ${userId}`);
+    }
+    const { accessToken, refreshToken } = JSON.parse(session.session);
     return {
         env: getEnvVars(),
         gmailCredentials: {
             userId: userId,
-            accessToken: getAccessTokenForUser(userId),
+            accessToken,
+            refreshToken,
         },
     } as GmailContext;
 };

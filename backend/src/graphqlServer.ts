@@ -1,14 +1,15 @@
 import { ApolloServer } from 'apollo-server-express';
 import express, { Request } from 'express';
 import { getOauth2Url, getToken } from './clients/gmail';
-import { createContext, setAccessTokenForUser, createGmailContext } from './context';
-import session from 'express-session';
+import { createContext, createGmailContext } from './context';
+import session, { MemoryStore } from 'express-session';
 import { resetAllJobs } from './stores/store';
 import { syncMailbox } from './cmd/sync_mailbox';
 import { resolvers, ApolloContext } from './graphql/graphql';
 import { join } from 'path';
 import { readFileSync } from 'fs';
 import startJobQueues from './jobs/startJobQueues';
+import SessionStore from './stores/SessionStore';
 
 const apolloServer = new ApolloServer({
     typeDefs: readFileSync(join(__dirname, '..', 'schema.graphql'), 'utf8').toString(),
@@ -32,7 +33,8 @@ const apolloServer = new ApolloServer({
 });
 
 const app = express();
-app.use(session({ secret: 'keyboard cat', cookie: { maxAge: 60000000 } }));
+
+app.use(session({ store: new SessionStore() as MemoryStore, secret: 'keyboard cat', cookie: { maxAge: 60000000 } }));
 
 apolloServer.applyMiddleware({ app });
 
@@ -41,15 +43,14 @@ app.listen({ port: 4000 }, () => console.log(`🚀 Server ready at http://localh
 app.get('/oauth2callback', async (req, res, next) => {
     const code = req.query.code as string;
     const serverContext = createContext();
-    const { access_token, userId } = await getToken(serverContext, code);
-    // TODO: Figure out how to get this from the google response
+    const { access_token, userId, refresh_token } = await getToken(serverContext, code);
     const session = req.session;
     if (session) {
         session.userId = userId;
         session.accessToken = access_token;
+        session.refreshToken = refresh_token;
         session.save(() => {});
-        setAccessTokenForUser(userId, access_token as string);
-        const context = createGmailContext(userId);
+        const context = await createGmailContext(userId);
         syncMailbox(context, context.env.cacheDirectory, {});
     }
     res.redirect('http://localhost:8080/mailbox');
@@ -62,5 +63,11 @@ app.get('/auth/gmail', (_, res) => {
     res.redirect(url);
 });
 
-resetAllJobs();
-startJobQueues();
+const initializeServer = () => {
+    // this resets all in progress jobs to not_started, so that they will retry
+    resetAllJobs();
+    // the job queues don't poll, so we need to start them when we init
+    startJobQueues();
+};
+
+initializeServer();

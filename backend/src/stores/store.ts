@@ -69,10 +69,95 @@ const prismaClient = async <K>(
     );
 };
 
+/**
+ * SQLite can't handle multiple concurrent writes,
+ * "SQLite is busy"
+ *
+ * So we need to have a single thread lock on DB access,
+ * even though we can separate writes and reads by table.
+ */
 const JOB_LOCK = 'job';
 const RESULT_LOCK = 'job';
+const SESSION_LOCK = 'job';
 
 const getIntDate = () => Math.round(Date.now() / 1000);
+
+export const getSavedSessionByUser = async (userId: string) => {
+    return (
+        await prismaClient(
+            [SESSION_LOCK],
+            async (prismaClient) => {
+                return await prismaClient.session.findMany({
+                    where: {
+                        userId,
+                    },
+                    take: 1,
+                });
+            },
+            true,
+        )
+    )[0];
+};
+
+export const getSavedSession = async (sid: string) => {
+    return (
+        await prismaClient(
+            [SESSION_LOCK],
+            async (prismaClient) => {
+                return await prismaClient.session.findMany({
+                    where: {
+                        sid,
+                    },
+                    take: 1,
+                });
+            },
+            true,
+        )
+    )[0];
+};
+
+export const setSavedSession = async (sid: string, session: string, userId?: string | null) => {
+    return await prismaClient(
+        [SESSION_LOCK],
+        async (prismaClient) => {
+            const existingRecords = await prismaClient.session.findMany({
+                where: { sid },
+            });
+            if (existingRecords.length > 0) {
+                return await prismaClient.session.update({
+                    where: { id: existingRecords[0].id },
+                    data: {
+                        session,
+                        userId,
+                    },
+                });
+            }
+            return await prismaClient.session.create({
+                data: {
+                    sid,
+                    session,
+                    createdAt: getIntDate(),
+                    userId,
+                },
+            });
+        },
+        true,
+    );
+};
+
+export const destroySession = async (sid: string) => {
+    return await prismaClient(
+        [SESSION_LOCK],
+        async (prismaClient) => {
+            return await prismaClient.session.deleteMany({
+                where: {
+                    sid,
+                },
+            });
+        },
+        true,
+    );
+};
 
 export const getMostRecentMailboxSyncJob = async (userId: string) => {
     return (
