@@ -39,45 +39,74 @@ An email client that downloads all messages in a GMail inbox and performs some b
 
 -   Between server restarts, the job counts reset - this sometimes results in negative counts (queued - completed - failed goes negative). I stored job counts in memory instead of querying for them each time, because I was trying to minimize SQLite reads.
 
-## .envrc file
+## Environment variables guide
 
-You'll need some environment variables set before starting the backend server and frontend service. You can either use direnv to automatically load these when you change into the right directory, or you can source this file before executing the relevant node service.
+You'll need some environment variables set before starting the backend server.
 
-```bash
-## backend
-## you'll need gmail client secrets and ids configured to redirect you to localhost:8080/oauth2callback
-export GMAIL_CLIENT_SECRET=""
-export GMAIL_CLIENT_ID=""
-export GMAIL_REDIRECT_URL="http://localhost:8080/oauth2callback"
-## frontend
-export PORT=8080
+For starters, you'll need some Gmail API tokens (the first 3 variables below). Visit [here](https://developers.google.com/gmail/api/quickstart/nodejs) to generate a token.
+
+```javascript
+// gmail related stuff
+const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET;
+const gmailClientId = process.env.GMAIL_CLIENT_ID;
+const gmailRedirectUrl = process.env.GMAIL_REDIRECT_URL;
+// where do we store the email messages on disk (not stored in DB)
+const cacheDirectory = process.env.CACHE_DIRECTORY || join(homedir(), 'message_cache');
+// once the user successfully oauths, and reaches the callback, where do we redirect to
+const authSuccessRedirectUrl = process.env.AUTH_SUCCESS_REDIRECT_URL || '/mailbox';
+// In development mode, this is 4000. It needs to match the port on GMAIL_REDIRECT_URL
+const serverPort = process.env.SERVER_PORT ? Number.parseInt(process.env.SERVER_PORT) : 4000;
+// when this is set, the server will serve assets from this path, and not depend on a running webpack devserver
+// without this set, you can run webpack dev server in the frontend folder, and using setupProxy
+// redirect backend queries only (no asset serving queries) to this backed
+const frontendAssetPath = process.env.FRONTEND_ASSET_PATH;
 ```
 
-## Dependencies
-
--   Environment variables in bash are managed by direnv. If you'd rather not install it, you can run this before running other commands:
-
-```bash
-source .envrc
-```
+## Developing
 
 -   Versions of node and yarn are managed with asdf. If you'd like to install them manually, there are some node12 features I'm using. Check .tool-versions to get the right versions of these tools.
 
-## Usage
+-   I like to use direnv to manage my environment variables, I keep a file called .envrc in this project root, and it sets all the required variables for me.
 
-In one terminal, run this:
+To develop the frontend, run:
 
-```js
+```bash
 cd frontend
-yarn start
+# needs to be served at 8080, because in my case the oauth2 redirect url is localhost:8080/oauth2callback.
+PORT=8080 yarn start
 ```
 
-In another terminal, run this:
+To develop on the backend, run:
 
-```js
+```bash
 cd backend
-yarn prisma-reset
+# by default, this will serve on port 4000. the frontend's setupProxy.ts will redirect requests here.
 yarn ts-node src/cli/server.ts
 ```
 
+## Building
+
+To build, you need to package the frontend and the backend. There is a shortcut script for this, run from the home directory:
+
+```bash
+./scripts/build.sh
+```
+
 ## Usage
+
+After building, there should be a build at dist/. Run the following command to run the server:
+
+```bash
+# You can get the next 3 Gmail fields from this URL:
+export GMAIL_CLIENT_SECRET="";
+export GMAIL_CLIENT_ID="";
+# this is defined at the time you request your Gmail token
+export GMAIL_REDIRECT_URL="http://localhost:8080/oauth2callback";
+# not needed, default is ~/message_cache
+export CACHE_DIRECTORY="/path/to/folder/on/disk";
+# needs to match the port specified on the GMAIL_REDIRECT_URL
+export SERVER_PORT="8080";
+export FRONTEND_ASSET_PATH="./dist/frontend";
+
+node dist/backend/server.js
+```
