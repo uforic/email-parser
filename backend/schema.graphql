@@ -19,6 +19,7 @@ type JobStats {
     COMPLETED: Int!
     IN_PROGRESS: Int!
     FAILED: Int!
+    timeSpent: Int!
 }
 
 enum JobStatus {
@@ -96,4 +97,5 @@ type Mutation {
 
 type MailboxMutations {
     syncMailbox: Boolean!
+    clearJobs(parentJobId: ID!): Boolean!
 }

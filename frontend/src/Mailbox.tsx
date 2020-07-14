@@ -9,9 +9,22 @@ import {
 import { LinkType, TrackerType } from './__generated__/globals';
 import { MessagePreviewContainer } from './MessagePreview';
 import { SyncStatus } from './SyncStatus';
+import { useLocation, useHistory } from 'react-router-dom';
+
+// https://reactrouter.com/web/example/query-parameters
+// A custom hook that builds on useLocation to parse
+// the query string for you.
+function useUrlQuery() {
+    return new URLSearchParams(useLocation().search);
+}
 
 const Mailbox = () => {
-    const [nextPageToken, setNextPageToken] = useState<number | null>(null);
+    const history = useHistory();
+
+    const query = useUrlQuery();
+    const nextPageTokenStr = query.get('nextPageToken');
+    const nextPageToken = nextPageTokenStr != null ? Number.parseInt(nextPageTokenStr) : undefined;
+    // const [nextPageToken, setNextPageToken] = useState<number | null>(null);
     const [analysisType, setAnalysisType] = useState<'linkAnalysis' | 'trackerAnalysis' | null>(null);
     const { loading, data, error } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
         variables: {
@@ -46,7 +59,7 @@ const Mailbox = () => {
     };
     return (
         <div>
-            <SyncStatus {...data.getMailboxSyncStatus} />
+            <SyncStatus data={data.getMailboxSyncStatus} />
             <div style={{ display: 'flex' }}>
                 <div>
                     <div>
@@ -62,7 +75,9 @@ const Mailbox = () => {
                                             ? null
                                             : (event.target.value as 'linkAnalysis'),
                                     );
-                                    setNextPageToken(null);
+                                    history.push({
+                                        pathname: '/mailbox',
+                                    });
                                     setSelectedMessage(null);
                                 }}
                             >
@@ -75,11 +90,22 @@ const Mailbox = () => {
                         <Results data={data} onClickMessage={onClickMessage} />
                     </div>
                     <div>
-                        <button onClick={() => setNextPageToken(null)}>First page</button>
+                        <button
+                            onClick={() => {
+                                history.push({
+                                    pathname: '/mailbox',
+                                });
+                            }}
+                        >
+                            First page
+                        </button>
                         {data.getResultsPage.nextToken ? (
                             <button
                                 onClick={() => {
-                                    setNextPageToken(data.getResultsPage.nextToken);
+                                    history.push({
+                                        pathname: '/mailbox',
+                                        search: `?nextPageToken=${data.getResultsPage.nextToken}`,
+                                    });
                                     setSelectedMessage(null);
                                 }}
                             >

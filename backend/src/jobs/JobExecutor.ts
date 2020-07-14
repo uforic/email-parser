@@ -31,9 +31,11 @@ export class JobExecutor<JobArgs extends {}> {
         this.currentlyRunningJobs += 1;
         const statsId = job.parentId != null ? job.parentId : job.jobId;
         try {
+            const startTime = Date.now();
             addCount(statsId, this.jobType, JobStatus.InProgress, 1);
             await this.jobFn(job);
             addCount(statsId, this.jobType, JobStatus.Completed, 1);
+            addCount(statsId, this.jobType, 'timeSpent', Date.now() - startTime);
             await markJobComplete(job.jobId);
         } catch (error) {
             addCount(statsId, this.jobType, JobStatus.Failed, 1);

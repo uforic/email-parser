@@ -36,6 +36,7 @@ export type JobStats = {
   COMPLETED: Scalars['Int'];
   IN_PROGRESS: Scalars['Int'];
   FAILED: Scalars['Int'];
+  timeSpent: Scalars['Int'];
 };
 
 export enum JobStatus {
@@ -140,6 +141,12 @@ export type Mutation = {
 export type MailboxMutations = {
   __typename?: 'MailboxMutations';
   syncMailbox: Scalars['Boolean'];
+  clearJobs: Scalars['Boolean'];
+};
+
+
+export type MailboxMutationsClearJobsArgs = {
+  parentJobId: Scalars['ID'];
 };
 
 export type WithIndex<TObject> = TObject & Record<string, any>;
@@ -289,6 +296,7 @@ export type JobStatsResolvers<ContextType = any, ParentType extends ResolversPar
   COMPLETED?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   IN_PROGRESS?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   FAILED?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  timeSpent?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 }>;
 
@@ -357,6 +365,7 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
 
 export type MailboxMutationsResolvers<ContextType = any, ParentType extends ResolversParentTypes['MailboxMutations'] = ResolversParentTypes['MailboxMutations']> = ResolversObject<{
   syncMailbox?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  clearJobs?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MailboxMutationsClearJobsArgs, 'parentJobId'>>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 }>;
 

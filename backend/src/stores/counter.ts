@@ -7,9 +7,10 @@ const INIT_JOB_STATS = {
     [JobStatus.InProgress]: 0,
     [JobStatus.NotStarted]: 0,
     [JobStatus.Unknown]: 0,
+    timeSpent: 0,
 };
 
-type JobStats = Record<JobStatus, number>;
+type JobStats = Record<JobStatus | 'timeSpent', number>;
 
 type JobCounter = Record<JobType, JobStats>;
 
@@ -26,7 +27,11 @@ export const getCounter = (jobId: number): JobCounter | undefined => {
     return jobCounters;
 };
 
-export const addCount = (parentJobId: number, key: JobType, subkey: JobStatus, value: number = 1) => {
+export const clearCounter = (jobId: number) => {
+    delete counter[jobId];
+};
+
+export const addCount = (parentJobId: number, key: JobType, subkey: JobStatus | 'timeSpent', value: number = 1) => {
     let parentJobGroup = counter[parentJobId];
     if (!parentJobGroup) {
         parentJobGroup = INIT_SYNC_STATE();

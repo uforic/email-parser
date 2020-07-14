@@ -1,8 +1,14 @@
 import { ForbiddenError } from 'apollo-server-express';
-import { loadMessage, loadMetadata, getPageOfResults, getMostRecentMailboxSyncJob } from '../stores/store';
+import {
+    loadMessage,
+    loadMetadata,
+    getPageOfResults,
+    getMostRecentMailboxSyncJob,
+    clearPendingJobsForUser,
+} from '../stores/store';
 import { createGmailContext, createContext } from '../context';
 import { syncMailbox } from '../cmd/sync_mailbox';
-import { getCounter } from '../stores/counter';
+import { getCounter, clearCounter } from '../stores/counter';
 import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
 import { QueryResolvers, JobStatus, MailboxMutationsResolvers } from './resolvers';
 import { isDefined } from '../utils';
@@ -95,6 +101,12 @@ const Mutations: MailboxMutationsResolvers = {
         assertLoggedIn(context.auth);
         const gmailContext = await createGmailContext(context.auth.userId);
         await syncMailbox(gmailContext, gmailContext.env.cacheDirectory, { maxPages: 0 });
+        return true;
+    },
+    clearJobs: async (_parent, args, context) => {
+        assertLoggedIn(context.auth);
+        clearPendingJobsForUser(context.auth.userId, Number.parseInt(args.parentJobId));
+        clearCounter(Number.parseInt(args.parentJobId));
         return true;
     },
 };

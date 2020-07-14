@@ -20,6 +20,6 @@ export const PROCESS_MESSAGE_EXECUTOR = new JobExecutor<{ messageId: string }>(
     },
     ANALYZE_MESSAGE,
     {
-        maxConcurrentJobs: 10,
+        maxConcurrentJobs: 50,
     },
 );

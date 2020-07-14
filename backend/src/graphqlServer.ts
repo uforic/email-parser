@@ -6,14 +6,27 @@ import session, { MemoryStore } from 'express-session';
 import { resetAllJobs } from './stores/store';
 import { syncMailbox } from './cmd/sync_mailbox';
 import { resolvers, ApolloContext } from './graphql/graphql';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { readFileSync } from 'fs';
 import startJobQueues from './jobs/startJobQueues';
 import SessionStore from './stores/SessionStore';
+import { getEnvVars, validateEnv } from './env';
+
+// make sure all required env vars are present
+const envVars = getEnvVars();
+console.log('Starting server with environment variables:\n', envVars);
+validateEnv(envVars);
 
 const apolloServer = new ApolloServer({
     typeDefs: readFileSync(join(__dirname, '..', 'schema.graphql'), 'utf8').toString(),
-    resolvers,
+    resolvers: {
+        ...resolvers,
+        AnalysisData: {
+            __resolveType: (parent: any) => {
+                return parent.__typename;
+            },
+        },
+    },
     context: (obj: { req: Request }): ApolloContext => {
         const { req } = obj;
         if (req?.session?.accessToken && req?.session?.userId) {
@@ -34,11 +47,21 @@ const apolloServer = new ApolloServer({
 
 const app = express();
 
-app.use(session({ store: new SessionStore() as MemoryStore, secret: 'keyboard cat', cookie: { maxAge: 60000000 } }));
+app.use(
+    session({
+        store: new SessionStore() as MemoryStore,
+        secret: 'keyboard cat',
+        cookie: { maxAge: 60000000 },
+        saveUninitialized: true,
+        resave: false,
+    }),
+);
 
 apolloServer.applyMiddleware({ app });
 
-app.listen({ port: 4000 }, () => console.log(`🚀 Server ready at http://localhost:4000${apolloServer.graphqlPath}`));
+app.listen({ port: envVars.serverPort }, () =>
+    console.log(`🚀 Server ready at http://localhost:${envVars.serverPort}${apolloServer.graphqlPath}`),
+);
 
 app.get('/oauth2callback', async (req, res, next) => {
     const code = req.query.code as string;
@@ -53,8 +76,7 @@ app.get('/oauth2callback', async (req, res, next) => {
         const context = await createGmailContext(userId);
         syncMailbox(context, context.env.cacheDirectory, {});
     }
-    res.redirect('http://localhost:8080/mailbox');
-    next();
+    res.redirect(serverContext.env.authSuccessRedirectUrl);
 });
 
 app.get('/auth/gmail', (_, res) => {
@@ -62,6 +84,17 @@ app.get('/auth/gmail', (_, res) => {
     const url = getOauth2Url(serverContext);
     res.redirect(url);
 });
+
+// to develop quickly, you can not specify a frontend asset path,
+// and use the create react app dev server
+if (envVars.frontendAssetPath != null) {
+    console.log('Serving single page app from: ', envVars.frontendAssetPath);
+    app.use('/static', express.static(join(resolve(envVars.frontendAssetPath as string), 'static')));
+    app.get('/*', function (req, res, next) {
+        console.log('GOT HERE', req.path);
+        res.sendFile(join(resolve(envVars.frontendAssetPath as string), 'index.html'));
+    });
+}
 
 const initializeServer = () => {
     // this resets all in progress jobs to not_started, so that they will retry

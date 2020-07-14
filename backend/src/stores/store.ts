@@ -216,6 +216,15 @@ export const resetAllJobs = async () => {
     });
 };
 
+export const clearPendingJobsForUser = async (userId: string, parentJobId: number) => {
+    await prismaClient([JOB_LOCK], async (prismaClient) => {
+        return await prismaClient.job.updateMany({
+            where: { status: { in: [JobStatus.NotStarted] }, userId, parentId: parentJobId },
+            data: { status: JobStatus.Failed, updatedAt: getIntDate() },
+        });
+    });
+};
+
 export const getFreshJobAndMarkInProgress = async (jobType: JobType, take: number) => {
     return await prismaClient([JOB_LOCK], async (prismaClient) => {
         const jobs = await prismaClient.job.findMany({

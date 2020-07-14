@@ -13,6 +13,7 @@ export interface MailboxStats_getMailboxSyncStats_downloadMessage {
   IN_PROGRESS: number;
   COMPLETED: number;
   FAILED: number;
+  timeSpent: number;
 }
 
 export interface MailboxStats_getMailboxSyncStats_analyzeMessage {
@@ -21,6 +22,7 @@ export interface MailboxStats_getMailboxSyncStats_analyzeMessage {
   IN_PROGRESS: number;
   COMPLETED: number;
   FAILED: number;
+  timeSpent: number;
 }
 
 export interface MailboxStats_getMailboxSyncStats {
