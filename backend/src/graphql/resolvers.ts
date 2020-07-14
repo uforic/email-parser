@@ -107,8 +107,8 @@ export type MessagePreview = {
   matchPreview?: Maybe<Scalars['String']>;
 };
 
-export type MailboxQueries = {
-  __typename?: 'MailboxQueries';
+export type Query = {
+  __typename?: 'Query';
   getMailboxSyncStatus: MailboxSyncStatus;
   getMailboxSyncStats?: Maybe<JobCounters>;
   getResultsPage: ResultsPage;
@@ -116,25 +116,20 @@ export type MailboxQueries = {
 };
 
 
-export type MailboxQueriesGetMailboxSyncStatsArgs = {
+export type QueryGetMailboxSyncStatsArgs = {
   jobId: Scalars['ID'];
 };
 
 
-export type MailboxQueriesGetResultsPageArgs = {
+export type QueryGetResultsPageArgs = {
   token?: Maybe<Scalars['Int']>;
   analysisType?: Maybe<Scalars['String']>;
 };
 
 
-export type MailboxQueriesGetMessagePreviewArgs = {
+export type QueryGetMessagePreviewArgs = {
   messageId: Scalars['String'];
   charPos?: Maybe<Scalars['Int']>;
-};
-
-export type Query = {
-  __typename?: 'Query';
-  mailbox: MailboxQueries;
 };
 
 export type Mutation = {
@@ -243,7 +238,6 @@ export type ResolversTypes = ResolversObject<{
   Result: ResolverTypeWrapper<Omit<Result, 'data'> & { data: ResolversTypes['AnalysisData'] }>;
   ResultsPage: ResolverTypeWrapper<ResultsPage>;
   MessagePreview: ResolverTypeWrapper<MessagePreview>;
-  MailboxQueries: ResolverTypeWrapper<MailboxQueries>;
   Query: ResolverTypeWrapper<{}>;
   Mutation: ResolverTypeWrapper<{}>;
   MailboxMutations: ResolverTypeWrapper<MailboxMutations>;
@@ -266,7 +260,6 @@ export type ResolversParentTypes = ResolversObject<{
   Result: Omit<Result, 'data'> & { data: ResolversParentTypes['AnalysisData'] };
   ResultsPage: ResultsPage;
   MessagePreview: MessagePreview;
-  MailboxQueries: MailboxQueries;
   Query: {};
   Mutation: {};
   MailboxMutations: MailboxMutations;
@@ -351,16 +344,11 @@ export type MessagePreviewResolvers<ContextType = any, ParentType extends Resolv
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 }>;
 
-export type MailboxQueriesResolvers<ContextType = any, ParentType extends ResolversParentTypes['MailboxQueries'] = ResolversParentTypes['MailboxQueries']> = ResolversObject<{
-  getMailboxSyncStatus?: Resolver<ResolversTypes['MailboxSyncStatus'], ParentType, ContextType>;
-  getMailboxSyncStats?: Resolver<Maybe<ResolversTypes['JobCounters']>, ParentType, ContextType, RequireFields<MailboxQueriesGetMailboxSyncStatsArgs, 'jobId'>>;
-  getResultsPage?: Resolver<ResolversTypes['ResultsPage'], ParentType, ContextType, RequireFields<MailboxQueriesGetResultsPageArgs, never>>;
-  getMessagePreview?: Resolver<Maybe<ResolversTypes['MessagePreview']>, ParentType, ContextType, RequireFields<MailboxQueriesGetMessagePreviewArgs, 'messageId'>>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
-}>;
-
 export type QueryResolvers<ContextType = any, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = ResolversObject<{
-  mailbox?: Resolver<ResolversTypes['MailboxQueries'], ParentType, ContextType>;
+  getMailboxSyncStatus?: Resolver<ResolversTypes['MailboxSyncStatus'], ParentType, ContextType>;
+  getMailboxSyncStats?: Resolver<Maybe<ResolversTypes['JobCounters']>, ParentType, ContextType, RequireFields<QueryGetMailboxSyncStatsArgs, 'jobId'>>;
+  getResultsPage?: Resolver<ResolversTypes['ResultsPage'], ParentType, ContextType, RequireFields<QueryGetResultsPageArgs, never>>;
+  getMessagePreview?: Resolver<Maybe<ResolversTypes['MessagePreview']>, ParentType, ContextType, RequireFields<QueryGetMessagePreviewArgs, 'messageId'>>;
 }>;
 
 export type MutationResolvers<ContextType = any, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = ResolversObject<{
@@ -384,7 +372,6 @@ export type Resolvers<ContextType = any> = ResolversObject<{
   Result?: ResultResolvers<ContextType>;
   ResultsPage?: ResultsPageResolvers<ContextType>;
   MessagePreview?: MessagePreviewResolvers<ContextType>;
-  MailboxQueries?: MailboxQueriesResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   MailboxMutations?: MailboxMutationsResolvers<ContextType>;

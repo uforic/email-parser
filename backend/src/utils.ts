@@ -15,6 +15,15 @@ const MULTIPART_MIMES = ['multipart/mixed', 'multipart/related', 'multipart/alte
 
 const TEXT_HTML_MIME = 'text/html';
 
+/**
+ * Helper function that generates a function that produces an array of matches given an HTML message
+ * body.
+ *
+ * All these matches are appended together, and return as one array.
+ *
+ * Some assumptions are made here: that we are only interested in multipart messages of MIME type
+ * (see array above), and that all interesting content is in the text/html mime type.
+ */
 export const collectMatches = <K>(messageBodyToDetected: (messageBody: string) => Array<K>) => {
     const fnToReturn = (part: gmail_v1.Schema$MessagePart): Array<K> => {
         if (part.mimeType === TEXT_HTML_MIME) {

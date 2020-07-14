@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import './App.css';
-import { useQuery, gql, useMutation } from '@apollo/client';
+import { useQuery, gql } from '@apollo/client';
 import {
     MailboxHome,
     MailboxHomeVariables,
-    MailboxHome_mailbox_getResultsPage_results_data,
-    MailboxHome_mailbox_getMailboxSyncStatus,
+    MailboxHome_getResultsPage_results_data,
 } from './__generated__/MailboxHome';
-import { MessagePreview, MessagePreviewVariables } from './__generated__/MessagePreview';
-import { LinkType, JobStatus, TrackerType } from './__generated__/globals';
-import { SyncMailbox } from './__generated__/SyncMailbox';
-import { MailboxStats, MailboxStatsVariables } from './__generated__/MailboxStats';
+import { LinkType, TrackerType } from './__generated__/globals';
+import { MessagePreviewContainer } from './MessagePreview';
+import { SyncStatus } from './SyncStatus';
 
 const Mailbox = () => {
     const [nextPageToken, setNextPageToken] = useState<number | null>(null);
@@ -48,7 +46,7 @@ const Mailbox = () => {
     };
     return (
         <div>
-            <SyncStatus {...data.mailbox.getMailboxSyncStatus} />
+            <SyncStatus {...data.getMailboxSyncStatus} />
             <div style={{ display: 'flex' }}>
                 <div>
                     <div>
@@ -74,10 +72,10 @@ const Mailbox = () => {
                     </div>
                     <div>
                         <button onClick={() => setNextPageToken(null)}>First page</button>
-                        {data.mailbox.getResultsPage.nextToken ? (
+                        {data.getResultsPage.nextToken ? (
                             <button
                                 onClick={() => {
-                                    setNextPageToken(data.mailbox.getResultsPage.nextToken);
+                                    setNextPageToken(data.getResultsPage.nextToken);
                                     setSelectedMessage(null);
                                 }}
                             >
@@ -92,52 +90,21 @@ const Mailbox = () => {
     );
 };
 
-const SyncStatus = (props: MailboxHome_mailbox_getMailboxSyncStatus) => {
-    const [syncMailbox, { loading }] = useMutation<SyncMailbox>(SYNC_MAILBOX_MUTATION);
-    const { data: statsData } = useQuery<MailboxStats, MailboxStatsVariables>(STATS_QUERY, {
-        variables: {
-            jobId: props.id,
-        },
-        // pollInterval: 5000,
-    });
-    const _stats = statsData?.mailbox.getMailboxSyncStats;
-    let stats;
-    if (_stats != null) {
-        stats = {
-            messagedQueuedToDownload: _stats.downloadMessage.NOT_STARTED - _stats.downloadMessage.IN_PROGRESS,
-            messagesDownloaded: _stats.downloadMessage.COMPLETED,
-            messagesDownloadFailed: _stats.downloadMessage.FAILED,
-            messagesQueuedToProcess: _stats.analyzeMessage.NOT_STARTED - _stats.analyzeMessage.IN_PROGRESS,
-            messagesProcessed: _stats.analyzeMessage.COMPLETED,
-            messagesProcessedFailed: _stats.analyzeMessage.FAILED,
-        };
-    }
-
+const Results = (props: { data: MailboxHome; onClickMessage: (messageId: string, charPos?: number) => void }) => {
     return (
         <div>
-            <div>{props.userId}</div>
-            <div>{props.status}</div>
-            <div>Job started: {new Date(props.createdAt * 1000).toString()}</div>
-            <div>Job status updated: {new Date(props.updatedAt * 1000).toString()}</div>
-            {stats && (
-                <div>
-                    Stats:
-                    <ul>
-                        <li>Messages queued to download: {stats.messagedQueuedToDownload}</li>
-                        <li>Messages downloaded: {stats.messagesDownloaded}</li>
-                        <li>Messages download failed: {stats.messagesDownloadFailed}</li>
-                        <li>Messages queued to process: {stats.messagesQueuedToProcess}</li>
-                        <li>Messages processed: {stats.messagesProcessed}</li>
-                        <li>Messages failed to process: {stats.messagesProcessedFailed}</li>
-                    </ul>
-                </div>
-            )}
-            <button
-                disabled={[JobStatus.IN_PROGRESS, JobStatus.NOT_STARTED].includes(props.status) || loading}
-                onClick={() => syncMailbox()}
-            >
-                Sync mailbox
-            </button>
+            {props.data.getResultsPage.results.map((result) => {
+                return (
+                    <div key={result.id} style={{ display: 'flex', maxWidth: '800px' }}>
+                        <div>{result.messageId}</div>
+                        <div>{analysisTypeToDisplay(result.data.__typename)}</div>
+                        <div>{analysisToSummary(result.data)}</div>
+                        <button onClick={() => props.onClickMessage(result.messageId, getFirstCharPos(result.data))}>
+                            Preview message
+                        </button>
+                    </div>
+                );
+            })}
         </div>
     );
 };
@@ -170,7 +137,7 @@ const trackingTypeToDisplay = (trackerType: TrackerType) => {
     trackerType as never;
 };
 
-const analysisToSummary = (analysisType: MailboxHome_mailbox_getResultsPage_results_data) => {
+const analysisToSummary = (analysisType: MailboxHome_getResultsPage_results_data) => {
     if (analysisType.__typename === 'LinkData') {
         return (
             <ul>
@@ -219,7 +186,7 @@ const analysisToSummary = (analysisType: MailboxHome_mailbox_getResultsPage_resu
     return 'UNKNOWN';
 };
 
-const getFirstCharPos = (analysis: MailboxHome_mailbox_getResultsPage_results_data) => {
+const getFirstCharPos = (analysis: MailboxHome_getResultsPage_results_data) => {
     if (analysis.__typename === 'LinkData') {
         return analysis.linkResults
             .map((result) => result.firstCharPos)
@@ -233,155 +200,40 @@ const getFirstCharPos = (analysis: MailboxHome_mailbox_getResultsPage_results_da
     return undefined;
 };
 
-const Results = (props: { data: MailboxHome; onClickMessage: (messageId: string, charPos?: number) => void }) => {
-    return (
-        <div>
-            {props.data.mailbox.getResultsPage.results.map((result) => {
-                return (
-                    <div key={result.id} style={{ display: 'flex', maxWidth: '800px' }}>
-                        <div>{result.messageId}</div>
-                        <div>{analysisTypeToDisplay(result.data.__typename)}</div>
-                        <div>{analysisToSummary(result.data)}</div>
-                        <button onClick={() => props.onClickMessage(result.messageId, getFirstCharPos(result.data))}>
-                            Preview message
-                        </button>
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
-
-const MessagePreviewContainer = (props: { message: { id: string; charPos?: number } | null }) => {
-    const contents =
-        props.message == null ? <div>No message loaded.</div> : <MessagePreviewComponent message={props.message} />;
-    return (
-        <div style={{ borderLeftWidth: '2px', borderLeftColor: 'black', borderLeftStyle: 'solid', maxWidth: '600px' }}>
-            <h2>Message preview</h2>
-            {contents}
-        </div>
-    );
-};
-
-const MessagePreviewComponent = (props: { message: { id: string; charPos?: number } }) => {
-    const { loading, data } = useQuery<MessagePreview, MessagePreviewVariables>(MESSAGE_PREVIEW_QUERY, {
-        variables: {
-            messageId: props.message.id,
-            charPos: props.message.charPos,
-        },
-    });
-    if (loading || !data || !data.mailbox.getMessagePreview) {
-        return <div>Loading data...</div>;
-    }
-    const previewData = data.mailbox.getMessagePreview;
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div>
-                <h3>From:</h3>
-                <div>{previewData.from}</div>
-            </div>
-            <div>
-                <h3>To:</h3>
-                <div>{previewData.to}</div>
-            </div>
-            <div>
-                <h3>Subject:</h3>
-                <div>{previewData.subject}</div>
-            </div>
-            <div>
-                <h3>Message Preview:</h3>
-                <div>{previewData.snippet}</div>
-            </div>
-            {previewData.matchPreview && (
-                <div>
-                    <h3>Match Preview:</h3>
-                    <div>{previewData.matchPreview}</div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const STATS_QUERY = gql`
-    query MailboxStats($jobId: ID!) {
-        mailbox {
-            getMailboxSyncStats(jobId: $jobId) {
-                downloadMessage {
-                    NOT_STARTED
-                    IN_PROGRESS
-                    COMPLETED
-                    FAILED
-                }
-                analyzeMessage {
-                    NOT_STARTED
-                    IN_PROGRESS
-                    COMPLETED
-                    FAILED
-                }
-            }
-        }
-    }
-`;
-
 const QUERY = gql`
     query MailboxHome($nextPageToken: Int, $analysisType: String) {
-        mailbox {
-            getMailboxSyncStatus {
+        getMailboxSyncStatus {
+            id
+            userId
+            updatedAt
+            createdAt
+            status
+        }
+        getResultsPage(token: $nextPageToken, analysisType: $analysisType) {
+            nextToken
+            results {
                 id
-                userId
-                updatedAt
-                createdAt
-                status
-            }
-            getResultsPage(token: $nextPageToken, analysisType: $analysisType) {
-                nextToken
-                results {
-                    id
-                    messageId
-                    data {
-                        ... on LinkData {
-                            linkResults: results {
-                                type
-                                href
-                                type
-                                firstCharPos
-                            }
+                messageId
+                data {
+                    ... on LinkData {
+                        linkResults: results {
+                            type
+                            href
+                            type
+                            firstCharPos
                         }
-                        ... on TrackingData {
-                            trackingResults: results {
-                                type
-                                domain
-                                href
-                                type
-                                firstCharPos
-                            }
+                    }
+                    ... on TrackingData {
+                        trackingResults: results {
+                            type
+                            domain
+                            href
+                            type
+                            firstCharPos
                         }
                     }
                 }
             }
-        }
-    }
-`;
-
-const MESSAGE_PREVIEW_QUERY = gql`
-    query MessagePreview($messageId: String!, $charPos: Int) {
-        mailbox {
-            getMessagePreview(messageId: $messageId, charPos: $charPos) {
-                subject
-                to
-                from
-                snippet
-                id
-                matchPreview
-            }
-        }
-    }
-`;
-
-const SYNC_MAILBOX_MUTATION = gql`
-    mutation SyncMailbox {
-        mailbox {
-            syncMailbox
         }
     }
 `;

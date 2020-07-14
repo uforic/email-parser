@@ -4,7 +4,7 @@ import { createGmailContext, createContext } from '../context';
 import { syncMailbox } from '../cmd/sync_mailbox';
 import { getCounter } from '../stores/counter';
 import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
-import { MailboxQueriesResolvers, JobStatus, MailboxMutationsResolvers } from './resolvers';
+import { QueryResolvers, JobStatus, MailboxMutationsResolvers } from './resolvers';
 import { isDefined } from '../utils';
 import { getMessagePreview } from '../cmd/get_html_preview';
 import { TrackerAnalysisData, LinkAnalysisData } from '../types';
@@ -15,7 +15,7 @@ export function assertLoggedIn(auth: any): asserts auth {
     }
 }
 
-const Queries: MailboxQueriesResolvers<ApolloContext> = {
+const Queries: QueryResolvers<ApolloContext> = {
     getMailboxSyncStatus: async (_parent, _args, context) => {
         assertLoggedIn(context.auth);
         const recentSync = await getMostRecentMailboxSyncJob(context.auth.userId);
@@ -32,7 +32,6 @@ const Queries: MailboxQueriesResolvers<ApolloContext> = {
     },
     getResultsPage: async (_parent, args, context) => {
         assertLoggedIn(context.auth);
-        console.log('RESULTS PAGE ARGS', args);
         const { results, nextPageToken } = await getPageOfResults(
             context.auth.userId,
             PAGE_SIZE,
@@ -113,22 +112,7 @@ export const resolvers = {
             );
         },
     },
-    Query: {
-        mailbox: () => {
-            const queries = Object.fromEntries(
-                Object.keys(Queries).map((key) => {
-                    const resolver = Queries[key];
-                    return [
-                        key,
-                        async (args: any, context: any) => {
-                            return await resolver({}, args, context);
-                        },
-                    ];
-                }),
-            );
-            return queries;
-        },
-    },
+    Query: Queries,
 };
 
 type Auth = {

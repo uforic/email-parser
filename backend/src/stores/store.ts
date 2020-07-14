@@ -126,7 +126,7 @@ export const resetAllJobs = async () => {
     await prismaClient([JOB_LOCK], async (prismaClient) => {
         return await prismaClient.job.updateMany({
             where: { status: IN_PROGRESS },
-            data: { status: 'not_started', updatedAt: getIntDate() },
+            data: { status: JobStatus.NotStarted, updatedAt: getIntDate() },
         });
     });
 };

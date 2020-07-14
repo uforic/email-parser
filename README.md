@@ -18,13 +18,15 @@ An email client that downloads all messages in a GMail inbox
 
 ## Assumptions made
 
--   The code that parses the GMail messages was handcrafted to work on my mailbox, and I made some assumptions about what emails look like: [parse_message](./backend/src/cmd/parse_message.ts). Basically, mixed/related/alternative multipart messages are recursed into, and text/html messages are actually parsed. I know that this will neglect text/plain messages which are often attached to emails as backup, but practically speaking it seems like text/html gets the love in most email clients.
+-   The code that parses the GMail messages was handcrafted to work on my mailbox, and I made some assumptions about what emails look like: [collectMatches](./backend/src/utils.ts). Basically, mixed/related/alternative multipart messages are recursed into, and text/html messages are actually parsed. I know that this will neglect text/plain messages which are often attached to emails as backup, but practically speaking it seems like text/html gets the love in most email clients.
 
 ## Known problems
 
 -   Prisma and SQLite were problematic. SQLite doesn't seem to be happy if you send it two concurrent queries, and Prisma doesn't limit concurrent SQL connections like many other SQL ORM's I'm familiar with. I ended up using a database lock variable, but this slows things down.
 
 -   I didn't mess with express sessions, to persist logins in between server restarts. I know that to do it, I'd need to plug in a "store" variable into the library, and save to my SQLite database. I'd also need to store the refresh token, and keep track of expired tokens / refresh them. As a workaround, the program will complain, and redirect you to the login page.
+
+-   There is an issue in the HTML DOM parser I'm using; when you pass in a normal looking URL in an `<a>` or `<img>`, some of the GET params get mangled. More on this here: [parse_message](./backend/src/cmd/parse_message.ts#26)
 
 ## .envrc file
 
@@ -63,6 +65,7 @@ In another terminal, run this:
 
 ```js
 cd backend
+yarn prisma-reset
 yarn ts-node src/cli/server.ts
 ```
 

@@ -7,7 +7,7 @@
 // GraphQL query operation: MessagePreview
 // ====================================================
 
-export interface MessagePreview_mailbox_getMessagePreview {
+export interface MessagePreview_getMessagePreview {
   __typename: "MessagePreview";
   subject: string;
   to: string;
@@ -17,13 +17,8 @@ export interface MessagePreview_mailbox_getMessagePreview {
   matchPreview: string | null;
 }
 
-export interface MessagePreview_mailbox {
-  __typename: "MailboxQueries";
-  getMessagePreview: MessagePreview_mailbox_getMessagePreview | null;
-}
-
 export interface MessagePreview {
-  mailbox: MessagePreview_mailbox;
+  getMessagePreview: MessagePreview_getMessagePreview | null;
 }
 
 export interface MessagePreviewVariables {
