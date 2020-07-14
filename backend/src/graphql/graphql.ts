@@ -83,10 +83,10 @@ const Queries: MailboxQueriesResolvers<ApolloContext> = {
         const message = await loadMessage(serverContext, args.messageId);
         let matchPreview;
         if (args.charPos != null && args.charPos >= 0) {
-            matchPreview = getMessagePreview(serverContext, message, args.charPos);
+            matchPreview = getMessagePreview(serverContext, message, args.charPos).matchPreview[0];
         }
 
-        const metadata = { ...loadMetadata(message), matchPreview: matchPreview?.matchPreview };
+        const metadata = { ...loadMetadata(message), matchPreview };
         return metadata;
     },
 };

@@ -1,7 +1,7 @@
 import { gmail_v1 } from 'googleapis';
 import { parse, HTMLElement } from 'node-html-parser';
 import { Context } from '../context';
-import { isDefined } from '../utils';
+import { isDefined, collectMatches } from '../utils';
 
 import { URL } from 'url';
 import { checkDriveLink as _checkDriveLink } from './check_drive_link';
@@ -9,19 +9,39 @@ import memoize from 'lodash.memoize';
 import { LinkType, TrackerType } from '../graphql/resolvers';
 import { DetectedTracker, DetectedLink } from '../types';
 
+// memoize to avoid double requesting the same link twice
 const checkDriveLink = memoize(_checkDriveLink);
 
+/**
+ * Given a Gmail message, find all unsecured links and 1x1 trackers in it.
+ *
+ * If an error occurs in either analysis, then the whole analysis fails.
+ *
+ * Known issues: The node-html-parser we are using occasionally mangles the URL
+ * for <img or <a tags. This will prevent us from finding the firstCharPos, since
+ * when we do a string match, the mangled string doesn't match.
+ *
+ *
+ * Example mangling:
+ * NoDedup¬ificationId -- this is what comes out of the HTMLElement.getAttribute
+ * NoDedup&notificationId -- this is what comes from Base64 decode
+ *
+ * Todo: Is there a better way to go from HTML DOM node to charPos?
+ *
+ * Todo: Find another library that doesn't mangle URLs
+ */
 export const analyzeEmail = (context: Context, message: gmail_v1.Schema$Message) => {
     if (!message.payload) {
         return { linkResults: [], trackerResults: [] };
     }
 
     return {
-        linkResults: parseMessagePartForLinks(context, message.payload),
-        trackerResults: parseMessagePartForTrackers(context, message.payload),
+        linkResults: parseMessagePartForLinks(message.payload),
+        trackerResults: parseMessagePartForTrackers(message.payload),
     };
 };
 
+// checks if a given link element match the URL regex, and does it have an href
 const linkAnalyzer = (urlRegex: RegExp, linkElement: HTMLElement) => {
     const href = linkElement.getAttribute('href');
     if (!href) {
@@ -33,6 +53,7 @@ const linkAnalyzer = (urlRegex: RegExp, linkElement: HTMLElement) => {
     return href;
 };
 
+// checks if a given image has a valid src, and is 1x1
 const imageAnalyzer = (linkElement: HTMLElement) => {
     const height = linkElement.getAttribute('height');
     const width = linkElement.getAttribute('width');
@@ -56,6 +77,7 @@ const imageAnalyzer = (linkElement: HTMLElement) => {
     return undefined;
 };
 
+// probably an abastraction too soon... but put a link pattern here, to have it start scanning for it
 const linkAnalysisConfigs = [
     {
         type: LinkType.GoogleDrive,
@@ -67,77 +89,39 @@ const linkAnalysisConfigs = [
     },
 ];
 
-const parseMessagePartForLinks = (context: Context, part: gmail_v1.Schema$MessagePart): Array<DetectedLink> => {
-    if (part.mimeType === 'text/html') {
-        const emailBody = part?.body?.data;
-        // have noticed that some messages don't have data, specifically when they are attachments
-        if (!emailBody) {
-            return [];
-        }
-
-        const buff = Buffer.from(emailBody, 'base64');
-        const text = buff.toString('ascii');
-        const rootElement = parse(text);
-        const links = rootElement.querySelectorAll('a');
-        const detectedLinks = linkAnalysisConfigs.flatMap((config) =>
-            links
-                .map((link) => linkAnalyzer(config.urlRegex, link))
-                .filter(isDefined)
-                .map((match) => ({ href: match, type: config.type, firstCharPos: text.indexOf(match) } as DetectedLink))
-                .filter(async (match) => {
-                    const checkResults = await checkDriveLink(match.href);
-                    return checkResults.ok === true;
-                }),
-        );
-        return detectedLinks;
-    } else if (
-        part.mimeType === 'multipart/mixed' ||
-        part.mimeType === 'multipart/related' ||
-        part.mimeType == 'multipart/alternative'
-    ) {
-        if (!part.parts) {
-            return [];
-        }
-        return part.parts.flatMap((part: gmail_v1.Schema$MessagePart) => parseMessagePartForLinks(context, part));
-    }
-    return [];
-};
-
-const parseMessagePartForTrackers = (context: Context, part: gmail_v1.Schema$MessagePart): Array<DetectedTracker> => {
-    if (part.mimeType === 'text/html') {
-        const emailBody = part?.body?.data;
-        // have noticed that some messages don't have data, specifically when they are attachments
-        if (!emailBody) {
-            return [];
-        }
-
-        const buff = Buffer.from(emailBody, 'base64');
-        const text = buff.toString('ascii');
-        // console.log('TEXT/HTML', text);
-        const rootElement = parse(text);
-        const images = rootElement.querySelectorAll('img');
-        const detectedTrackers = images
-            .map((link) => imageAnalyzer(link))
+const parseMessagePartForLinks = collectMatches((messageBody: string) => {
+    const rootElement = parse(messageBody);
+    const links = rootElement.querySelectorAll('a');
+    const detectedLinks = linkAnalysisConfigs.flatMap((config) =>
+        links
+            .map((link) => linkAnalyzer(config.urlRegex, link))
             .filter(isDefined)
             .map(
                 (match) =>
-                    ({
-                        ...match,
-                        type: TrackerType.Onebyone,
-                        firstCharPos: text.indexOf(match.href),
-                    } as DetectedTracker),
-            );
+                    ({ href: match, type: config.type, firstCharPos: messageBody.indexOf(match) } as DetectedLink),
+            )
+            .filter(async (match) => {
+                const checkResults = await checkDriveLink(match.href);
+                return checkResults.ok === true;
+            }),
+    );
+    return detectedLinks;
+});
 
-        return detectedTrackers;
-    } else if (
-        part.mimeType === 'multipart/mixed' ||
-        part.mimeType === 'multipart/related' ||
-        part.mimeType == 'multipart/alternative'
-    ) {
-        if (!part.parts) {
-            return [];
-        }
-        return part.parts.flatMap((part: gmail_v1.Schema$MessagePart) => parseMessagePartForTrackers(context, part));
-    }
-    return [];
-};
+const parseMessagePartForTrackers = collectMatches((messageBody: string) => {
+    const rootElement = parse(messageBody);
+    const images = rootElement.querySelectorAll('img');
+    const detectedTrackers = images
+        .map((link) => imageAnalyzer(link))
+        .filter(isDefined)
+        .map(
+            (match) =>
+                ({
+                    ...match,
+                    type: TrackerType.Onebyone,
+                    firstCharPos: messageBody.indexOf(match.href),
+                } as DetectedTracker),
+        );
+
+    return detectedTrackers;
+});
