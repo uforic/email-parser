@@ -1,7 +1,8 @@
 import { JobExecutor } from '../jobs/JobExecutor';
 import { analyzeEmail } from '../cmd/parse_message';
 import { createContext } from '../context';
-import { loadMessage, storeResult } from '../stores/store';
+import { storeResult } from '../stores/store';
+import { loadMessage } from '../stores/messageStore';
 import { ANALYZE_MESSAGE } from '../types';
 import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
 

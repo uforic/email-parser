@@ -1,11 +1,6 @@
 import { ForbiddenError } from 'apollo-server-express';
-import {
-    loadMessage,
-    loadMetadata,
-    getPageOfResults,
-    getMostRecentMailboxSyncJob,
-    clearPendingJobsForUser,
-} from '../stores/store';
+import { getPageOfResults, getMostRecentMailboxSyncJob, clearPendingJobsForUser } from '../stores/store';
+import { loadMessage, loadMetadata } from '../stores/messageStore';
 import { createGmailContext, createContext } from '../context';
 import { syncMailbox } from '../cmd/sync_mailbox';
 import { getCounter, clearCounter } from '../stores/counter';

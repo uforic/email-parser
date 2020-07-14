@@ -39,6 +39,8 @@ An email client that downloads all messages in a GMail inbox and performs some b
 
 -   Between server restarts, the job counts reset - this sometimes results in negative counts (queued - completed - failed goes negative). I stored job counts in memory instead of querying for them each time, because I was trying to minimize SQLite reads.
 
+-   Rate limiting on the Gmail API: There is some rate limiting done in the job server, it only allows 25 outgoing requests to Gmail at a time. In a super fast internet environment, it's possible we would exceed the 100 requests per second allowed per user for the Gmail API.
+
 ## Environment variables guide
 
 You'll need some environment variables set before starting the backend server.

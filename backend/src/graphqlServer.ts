@@ -77,6 +77,7 @@ app.get('/oauth2callback', async (req, res, next) => {
         syncMailbox(context, context.env.cacheDirectory, {});
     }
     res.redirect(serverContext.env.authSuccessRedirectUrl);
+    next();
 });
 
 app.get('/auth/gmail', (_, res) => {
@@ -91,10 +92,14 @@ if (envVars.frontendAssetPath != null) {
     console.log('Serving single page app from: ', envVars.frontendAssetPath);
     app.use('/static', express.static(join(resolve(envVars.frontendAssetPath as string), 'static')));
     app.get('/*', function (req, res, next) {
-        console.log('GOT HERE', req.path);
         res.sendFile(join(resolve(envVars.frontendAssetPath as string), 'index.html'));
     });
 }
+
+app.use((err: any, _req: any, _res: any, next: any) => {
+    console.error('Express error', err);
+    next();
+});
 
 const initializeServer = () => {
     // this resets all in progress jobs to not_started, so that they will retry
