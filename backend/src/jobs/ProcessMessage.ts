@@ -10,7 +10,7 @@ export const PROCESS_MESSAGE_EXECUTOR = new JobExecutor<{ messageId: string }>(
         const { messageId } = job.jobArgs;
         const context = createContext();
         const message = loadMessage(context, messageId);
-        const results = analyzeEmail(context, message);
+        const results = await analyzeEmail(context, message);
         if (results.linkResults.length > 0) {
             storeResult(job.userId, messageId, LINK_ANALYSIS, results.linkResults);
         }

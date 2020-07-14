@@ -13,11 +13,11 @@ type JobStats = Record<JobStatus, number>;
 
 type JobCounter = Record<JobType, JobStats>;
 
-const INIT_SYNC_STATE: JobCounter = {
+const INIT_SYNC_STATE: () => JobCounter = () => ({
     analyzeMessage: { ...INIT_JOB_STATS },
     syncMailbox: { ...INIT_JOB_STATS },
     downloadMessage: { ...INIT_JOB_STATS },
-};
+});
 
 const counter: Record<number, JobCounter> = {};
 
@@ -27,10 +27,10 @@ export const getCounter = (jobId: number): JobCounter | undefined => {
 };
 
 export const addCount = (parentJobId: number, key: JobType, subkey: JobStatus, value: number = 1) => {
-    let userIdState = counter[parentJobId];
-    if (!userIdState) {
-        userIdState = { ...INIT_SYNC_STATE };
+    let parentJobGroup = counter[parentJobId];
+    if (!parentJobGroup) {
+        parentJobGroup = INIT_SYNC_STATE();
     }
-    userIdState[key][subkey] += value;
-    counter[parentJobId] = userIdState;
+    parentJobGroup[key][subkey] += value;
+    counter[parentJobId] = parentJobGroup;
 };

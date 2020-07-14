@@ -51,22 +51,26 @@ const Mailbox = () => {
                 <div>
                     <div>
                         <h2>Analysis Inbox</h2>
-                        <h3>Analysis type:</h3>
-                        <select
-                            value={analysisType === null ? 'undefined' : analysisType}
-                            name="Analysis Type"
-                            onChange={(event) => {
-                                setAnalysisType(
-                                    event.target.value === 'undefined' ? null : (event.target.value as 'linkAnalysis'),
-                                );
-                                setNextPageToken(null);
-                                setSelectedMessage(null);
-                            }}
-                        >
-                            <option value="undefined">Undefined</option>
-                            <option value="linkAnalysis">Link analysis</option>
-                            <option value="trackerAnalysis">Tracker analysis</option>
-                        </select>
+                        <div style={{ display: 'flex' }}>
+                            <span>Analysis type filter:</span>
+                            <select
+                                value={analysisType === null ? 'undefined' : analysisType}
+                                name="Analysis type filter"
+                                onChange={(event) => {
+                                    setAnalysisType(
+                                        event.target.value === 'undefined'
+                                            ? null
+                                            : (event.target.value as 'linkAnalysis'),
+                                    );
+                                    setNextPageToken(null);
+                                    setSelectedMessage(null);
+                                }}
+                            >
+                                <option value="undefined">All analysis</option>
+                                <option value="linkAnalysis">Link analysis</option>
+                                <option value="trackerAnalysis">Tracker analysis</option>
+                            </select>
+                        </div>
 
                         <Results data={data} onClickMessage={onClickMessage} />
                     </div>
@@ -92,20 +96,34 @@ const Mailbox = () => {
 
 const Results = (props: { data: MailboxHome; onClickMessage: (messageId: string, charPos?: number) => void }) => {
     return (
-        <div>
-            {props.data.getResultsPage.results.map((result) => {
-                return (
-                    <div key={result.id} style={{ display: 'flex', maxWidth: '800px' }}>
-                        <div>{result.messageId}</div>
-                        <div>{analysisTypeToDisplay(result.data.__typename)}</div>
-                        <div>{analysisToSummary(result.data)}</div>
-                        <button onClick={() => props.onClickMessage(result.messageId, getFirstCharPos(result.data))}>
-                            Preview message
-                        </button>
-                    </div>
-                );
-            })}
-        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Message ID</th>
+                    <th>Analysis type</th>
+                    <th>Analysis summary</th>
+                    <th>Preview</th>
+                </tr>
+            </thead>
+            <tbody>
+                {props.data.getResultsPage.results.map((result) => {
+                    return (
+                        <tr key={result.id}>
+                            <td>{result.messageId}</td>
+                            <td>{analysisTypeToDisplay(result.data.__typename)}</td>
+                            <td>{analysisToSummary(result.data)}</td>
+                            <td>
+                                <button
+                                    onClick={() => props.onClickMessage(result.messageId, getFirstCharPos(result.data))}
+                                >
+                                    Preview message
+                                </button>
+                            </td>
+                        </tr>
+                    );
+                })}
+            </tbody>
+        </table>
     );
 };
 

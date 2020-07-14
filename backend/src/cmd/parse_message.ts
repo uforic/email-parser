@@ -1,7 +1,7 @@
 import { gmail_v1 } from 'googleapis';
 import { parse, HTMLElement } from 'node-html-parser';
 import { Context } from '../context';
-import { isDefined, collectMatches } from '../utils';
+import { isDefined, collectMatches, asyncFilter } from '../utils';
 
 import { URL } from 'url';
 import { checkDriveLink as _checkDriveLink } from './check_drive_link';
@@ -30,13 +30,20 @@ const checkDriveLink = memoize(_checkDriveLink);
  *
  * Todo: Find another library that doesn't mangle URLs
  */
-export const analyzeEmail = (context: Context, message: gmail_v1.Schema$Message) => {
+export const analyzeEmail = async (context: Context, message: gmail_v1.Schema$Message) => {
     if (!message.payload) {
         return { linkResults: [], trackerResults: [] };
     }
 
+    const unfilteredLinkResults = parseMessagePartForLinks(message.payload);
+
+    const linkResults = await asyncFilter(
+        unfilteredLinkResults,
+        async (result) => (await checkDriveLink(result.href)).ok,
+    );
+
     return {
-        linkResults: parseMessagePartForLinks(message.payload),
+        linkResults,
         trackerResults: parseMessagePartForTrackers(message.payload),
     };
 };
@@ -99,11 +106,7 @@ const parseMessagePartForLinks = collectMatches((messageBody: string) => {
             .map(
                 (match) =>
                     ({ href: match, type: config.type, firstCharPos: messageBody.indexOf(match) } as DetectedLink),
-            )
-            .filter(async (match) => {
-                const checkResults = await checkDriveLink(match.href);
-                return checkResults.ok === true;
-            }),
+            ),
     );
     return detectedLinks;
 });

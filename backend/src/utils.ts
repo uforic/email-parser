@@ -11,6 +11,15 @@ export function isDefined<K>(n: K | null | undefined): n is K {
     return n != null;
 }
 
+export function isntFalsey<K>(n: K | false): n is K {
+    return Boolean(n);
+}
+
+export const asyncFilter = async <K>(arr: Array<K>, filterFn: (item: K) => Promise<boolean>) => {
+    const filterResults = await Promise.all(arr.map(async (item) => await filterFn(item)));
+    return filterResults.map((result, idx) => result && arr[idx]).filter(isntFalsey);
+};
+
 const MULTIPART_MIMES = ['multipart/mixed', 'multipart/related', 'multipart/alternative'];
 
 const TEXT_HTML_MIME = 'text/html';

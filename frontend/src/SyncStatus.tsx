@@ -4,6 +4,7 @@ import { useQuery, useMutation, gql } from '@apollo/client';
 import { SyncMailbox } from './__generated__/SyncMailbox';
 import { MailboxStats, MailboxStatsVariables } from './__generated__/MailboxStats';
 import { JobStatus } from './__generated__/globals';
+import { format } from 'date-fns';
 
 export const SyncStatus = (props: MailboxHome_getMailboxSyncStatus) => {
     const [syncMailbox, { loading }] = useMutation<SyncMailbox>(SYNC_MAILBOX_MUTATION);
@@ -44,30 +45,34 @@ export const SyncStatus = (props: MailboxHome_getMailboxSyncStatus) => {
             </p>
             <h3>List messages job progress</h3>
             <div>Status of listMessages job: {props.status}</div>
-            <div>listMessages job started: {new Date(props.createdAt * 1000).toString()}</div>
-            <div>listMessages status updated: {new Date(props.updatedAt * 1000).toString()}</div>
+            <div>listMessages job started: {format(new Date(props.createdAt * 1000), 'M/dd/yyyy HH:mm')}</div>
+            <div>listMessages status updated: {format(new Date(props.updatedAt * 1000), 'M/dd/yyyy HH:mm')}</div>
             {stats && (
                 <div>
                     <h3>Job progress:</h3>
                     <table>
-                        <tr>
-                            <th>Job Name</th>
-                            <th>Queued</th>
-                            <th>Succeeded</th>
-                            <th>Failed</th>
-                        </tr>
-                        <tr>
-                            <td>Download message</td>
-                            <td>{stats.messagedQueuedToDownload}</td>
-                            <td>{stats.messagesDownloaded}</td>
-                            <td>{stats.messagesDownloadFailed}</td>
-                        </tr>
-                        <tr>
-                            <td>Process message</td>
-                            <td>{stats.messagesQueuedToProcess}</td>
-                            <td>{stats.messagesProcessed}</td>
-                            <td>{stats.messagesProcessedFailed}</td>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <th>Job Name</th>
+                                <th>Queued</th>
+                                <th>Succeeded</th>
+                                <th>Failed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Download message</td>
+                                <td>{stats.messagedQueuedToDownload}</td>
+                                <td>{stats.messagesDownloaded}</td>
+                                <td>{stats.messagesDownloadFailed}</td>
+                            </tr>
+                            <tr>
+                                <td>Process message</td>
+                                <td>{stats.messagesQueuedToProcess}</td>
+                                <td>{stats.messagesProcessed}</td>
+                                <td>{stats.messagesProcessedFailed}</td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             )}
