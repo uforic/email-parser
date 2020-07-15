@@ -91,11 +91,12 @@ export const markJobComplete = (jobId: number) => {
 
 const _markJobCompleteBatch = async () => {
     await prismaClient([JOB_LOCK], 'markJobComplete', async (prismaClient) => {
+        const jobsToMark = jobsToMarkComplete;
+        jobsToMarkComplete = [];
         await prismaClient.job.updateMany({
-            where: { id: { in: jobsToMarkComplete } },
+            where: { id: { in: jobsToMark } },
             data: { status: JobStatus.Completed, updatedAt: getIntDate() },
         });
-        jobsToMarkComplete = [];
     });
 };
 
