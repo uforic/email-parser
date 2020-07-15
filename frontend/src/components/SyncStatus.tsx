@@ -1,9 +1,9 @@
-import { MailboxHome_getMailboxSyncStatus } from '../__generated__/MailboxHome';
+import { MailboxHome_getMailboxSyncStatus } from './__generated__/MailboxHome';
 import React from 'react';
 import { useQuery, useMutation, gql } from '@apollo/client';
-import { SyncMailbox } from '../__generated__/SyncMailbox';
-import { ClearJobs, ClearJobsVariables } from '../__generated__/ClearJobs';
-import { MailboxStats, MailboxStatsVariables } from '../__generated__/MailboxStats';
+import { SyncMailbox } from './__generated__/SyncMailbox';
+import { ClearJobs, ClearJobsVariables } from './__generated__/ClearJobs';
+import { MailboxStats, MailboxStatsVariables } from './__generated__/MailboxStats';
 import { JobStatus } from '../__generated__/globals';
 import { format } from 'date-fns';
 

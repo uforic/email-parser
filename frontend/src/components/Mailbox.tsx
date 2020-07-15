@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, gql } from '@apollo/client';
-import { MailboxHome, MailboxHomeVariables } from '../__generated__/MailboxHome';
+import { MailboxHome, MailboxHomeVariables } from './__generated__/MailboxHome';
 import { MessagePreviewContainer } from './MessagePreview';
 import { SyncStatus } from './SyncStatus';
 import { useLocation, useHistory } from 'react-router-dom';

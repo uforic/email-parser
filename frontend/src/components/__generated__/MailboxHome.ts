@@ -3,7 +3,7 @@
 // @generated
 // This file was automatically generated and should not be edited.
 
-import { JobStatus, LinkType, TrackerType } from "./globals";
+import { JobStatus, LinkType, TrackerType } from "./../../__generated__/globals";
 
 // ====================================================
 // GraphQL query operation: MailboxHome

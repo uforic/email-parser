@@ -1,5 +1,5 @@
 import React from 'react';
-import { MailboxHome, MailboxHome_getResultsPage_results_data } from '../__generated__/MailboxHome';
+import { MailboxHome, MailboxHome_getResultsPage_results_data } from './__generated__/MailboxHome';
 import { LinkType, TrackerType } from '../__generated__/globals';
 
 export const Results = (props: {
