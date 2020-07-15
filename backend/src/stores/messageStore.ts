@@ -2,7 +2,7 @@ import { Context } from '../types';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { gmail_v1 } from 'googleapis';
-import { writeFileSync, existsSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 
 /**
  * messageStore handles reading and writing Gmail messages to the message cache.
@@ -10,26 +10,34 @@ import { writeFileSync, existsSync } from 'fs';
  * and don't use up the API.
  */
 
+// puts messages in /message_cache/{last two digits of id}/messageId.json
 const messagePath = (context: Context, messageId: string) => {
-    return join(context.env.cacheDirectory, messageId + '.json');
+    return {
+        dir: join(context.env.cacheDirectory, messageId.slice(-2)),
+        path: join(context.env.cacheDirectory, messageId.slice(-2), messageId + '.json'),
+    };
 };
 
 export const storeMessage = async (context: Context, messageId: string, message: gmail_v1.Schema$Message) => {
-    const messagePth = messagePath(context, messageId);
-    writeFileSync(messagePth, JSON.stringify(message));
+    const pathAndDir = messagePath(context, messageId);
+    if (!existsSync(pathAndDir.dir)) {
+        mkdirSync(pathAndDir.dir);
+    }
+    writeFileSync(pathAndDir.path, JSON.stringify(message));
 };
 
 export const existsMessage = async (context: Context, messageId: string) => {
-    const messagePth = messagePath(context, messageId);
-    if (existsSync(messagePth)) {
+    const pathAndDir = messagePath(context, messageId);
+    if (existsSync(pathAndDir.path)) {
         return true;
     }
     return false;
 };
 
 export const loadMessage = (context: Context, messageId: string): gmail_v1.Schema$Message & { id: string } => {
+    const pathAndDir = messagePath(context, messageId);
     return {
-        ...JSON.parse(readFileSync(messagePath(context, messageId)).toString()),
+        ...JSON.parse(readFileSync(pathAndDir.path).toString()),
         id: messageId,
     };
 };
