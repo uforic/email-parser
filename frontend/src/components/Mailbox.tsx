@@ -84,8 +84,8 @@ const Mailbox = () => {
                                 }}
                             >
                                 <option value="undefined">All analysis</option>
-                                <option value="linkAnalysis">Link analysis</option>
-                                <option value="trackerAnalysis">Tracker analysis</option>
+                                <option value={AnalysisType.LINK_ANALYSIS}>Link analysis</option>
+                                <option value={AnalysisType.TRACKER_ANALYSIS}>Tracker analysis</option>
                             </select>
                         </div>
 
