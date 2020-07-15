@@ -1,6 +1,9 @@
-import sqlstring from 'sqlstring';
+// @ts-ignore
+import _sqlstring from 'sqlstring-sqlite';
+import orginalSqlstring from 'sqlstring';
+const sqlstring: typeof orginalSqlstring = _sqlstring;
 import { JobStatus } from '../graphql/resolvers';
-import { PrismaClient, Session } from '@prisma/client';
+import { PrismaClient, Message } from '@prisma/client';
 import AsyncLock from 'async-lock';
 import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
 import { LinkAnalysisData, TrackerAnalysisData, SYNC_MAILBOX, JobType } from '../types';
@@ -57,6 +60,7 @@ export const prismaClient = async <K>(
 const JOB_LOCK = 'job';
 const RESULT_LOCK = 'job';
 export const SESSION_LOCK = 'job';
+const MESSAGE_LOCk = 'job';
 
 export const getIntDate = () => Math.round(Date.now() / 1000);
 
@@ -187,6 +191,59 @@ export const addJobs = async (jobs: Array<{ userId: string; type: JobType; jobAr
     });
 };
 
+let messagesToStore: Array<{ messageId: string; subject: string; from: string; to: string }> = [];
+export const storeMessageMeta = async (messageId: string, subject: string, from: string, to: string) => {
+    messagesToStore.push({
+        messageId,
+        subject,
+        from,
+        to,
+    });
+    storeMessageMetaBatch();
+};
+
+const _storeMessageMetaBatch = async () => {
+    await prismaClient([MESSAGE_LOCk], 'storeMessageMetaBatch', async (prismaClient) => {
+        const messages = messagesToStore;
+        messagesToStore = [];
+
+        const messageIds = messages.map((message) => message.messageId);
+        const existingMessages = (
+            await prismaClient.message.findMany({
+                where: {
+                    messageId: { in: messageIds },
+                },
+                select: {
+                    messageId: true,
+                },
+            })
+        ).map((message) => message.messageId);
+        const newMessages = messages.filter((message) => !existingMessages.includes(message.messageId));
+        if (newMessages.length <= 0) {
+            return;
+        }
+        const createdDate = getIntDate();
+        const newMessageList = newMessages
+            .map((newMessage) => {
+                return `('${newMessage.messageId}', ${sqlstring.escape(newMessage.subject)}, ${sqlstring.escape(
+                    newMessage.from,
+                )}, ${sqlstring.escape(newMessage.to)}, ${createdDate})`;
+            })
+            .join(',');
+
+        const query = `
+            INSERT INTO message (messageId, subject, 'from', 'to', createdAt)
+            VALUES 
+                ${newMessageList}
+            ;
+        `;
+
+        const result: number = await prismaClient.executeRaw(query);
+        return result;
+    });
+};
+const storeMessageMetaBatch = debounce(_storeMessageMetaBatch, 10);
+
 export const storeResult = async (userId: string, messageId: string, type: string, data: {}) => {
     await prismaClient([RESULT_LOCK], 'storeResult', async (prismaClient) => {
         const previousMessage = (
@@ -243,16 +300,27 @@ export const getPageOfResults = async (
                     : undefined,
         });
 
+        const messageDict: Record<string, Message> = (
+            await prismaClient.message.findMany({
+                where: { messageId: { in: _results.map((result) => result.messageId) } },
+            })
+        ).reduce((acc, elem) => {
+            return { ...acc, [elem.messageId]: elem };
+        }, {});
+
         const results = _results.map((result) => {
+            const foundMessage = messageDict[result.messageId] as Message | undefined;
             if (result.type === LINK_ANALYSIS) {
                 return {
                     ...result,
+                    message: foundMessage,
                     type: result.type as typeof LINK_ANALYSIS,
                     data: JSON.parse(result.data) as LinkAnalysisData,
                 };
             } else if (result.type === TRACKER_ANALYSIS) {
                 return {
                     ...result,
+                    message: foundMessage,
                     type: result.type as typeof TRACKER_ANALYSIS,
                     data: JSON.parse(result.data) as TrackerAnalysisData,
                 };

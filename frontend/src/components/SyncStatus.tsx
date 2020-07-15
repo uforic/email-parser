@@ -11,7 +11,7 @@ function isDefined<K>(n: K | null | undefined): n is K {
     return n != null;
 }
 
-export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus }) => {
+export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus; refetchStatus: () => void }) => {
     const { data } = props;
     const [syncMailbox, { loading }] = useMutation<SyncMailbox>(SYNC_MAILBOX_MUTATION);
     const [clearJobs] = useMutation<ClearJobs, ClearJobsVariables>(CLEAR_JOBS_MUTATION);
@@ -99,7 +99,13 @@ export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus }) =>
                     </table>
                 </div>
             )}
-            <button disabled={syncButtonDisabled} onClick={() => syncMailbox()}>
+            <button
+                disabled={syncButtonDisabled}
+                onClick={() => {
+                    syncMailbox();
+                    props.refetchStatus();
+                }}
+            >
                 Sync mailbox
             </button>
             <button

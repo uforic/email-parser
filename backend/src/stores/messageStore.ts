@@ -18,7 +18,7 @@ const messagePath = (context: Context, messageId: string) => {
     };
 };
 
-export const storeMessage = async (context: Context, messageId: string, message: gmail_v1.Schema$Message) => {
+export const storeMessage = (context: Context, messageId: string, message: gmail_v1.Schema$Message) => {
     const pathAndDir = messagePath(context, messageId);
     if (!existsSync(pathAndDir.dir)) {
         mkdirSync(pathAndDir.dir);

@@ -18,6 +18,13 @@ export interface MailboxHome_getMailboxSyncStatus {
   status: JobStatus;
 }
 
+export interface MailboxHome_getResultsPage_results_meta {
+  __typename: "MessageMeta";
+  from: string;
+  to: string;
+  subject: string;
+}
+
 export interface MailboxHome_getResultsPage_results_data_LinkData_linkResults {
   __typename: "LinkDetection";
   type: LinkType;
@@ -49,6 +56,7 @@ export interface MailboxHome_getResultsPage_results {
   __typename: "Result";
   id: string;
   messageId: string;
+  meta: MailboxHome_getResultsPage_results_meta | null;
   data: MailboxHome_getResultsPage_results_data;
 }
 

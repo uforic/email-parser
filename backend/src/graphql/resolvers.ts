@@ -90,6 +90,15 @@ export type Result = {
   id: Scalars['ID'];
   messageId: Scalars['String'];
   data: AnalysisData;
+  meta?: Maybe<MessageMeta>;
+};
+
+export type MessageMeta = {
+  __typename?: 'MessageMeta';
+  to: Scalars['String'];
+  from: Scalars['String'];
+  subject: Scalars['String'];
+  id: Scalars['ID'];
 };
 
 export type ResultsPage = {
@@ -243,6 +252,7 @@ export type ResolversTypes = ResolversObject<{
   TrackingData: ResolverTypeWrapper<TrackingData>;
   AnalysisData: ResolversTypes['TrackingData'] | ResolversTypes['LinkData'];
   Result: ResolverTypeWrapper<Omit<Result, 'data'> & { data: ResolversTypes['AnalysisData'] }>;
+  MessageMeta: ResolverTypeWrapper<MessageMeta>;
   ResultsPage: ResolverTypeWrapper<ResultsPage>;
   MessagePreview: ResolverTypeWrapper<MessagePreview>;
   Query: ResolverTypeWrapper<{}>;
@@ -265,6 +275,7 @@ export type ResolversParentTypes = ResolversObject<{
   TrackingData: TrackingData;
   AnalysisData: ResolversParentTypes['TrackingData'] | ResolversParentTypes['LinkData'];
   Result: Omit<Result, 'data'> & { data: ResolversParentTypes['AnalysisData'] };
+  MessageMeta: MessageMeta;
   ResultsPage: ResultsPage;
   MessagePreview: MessagePreview;
   Query: {};
@@ -333,6 +344,15 @@ export type ResultResolvers<ContextType = any, ParentType extends ResolversParen
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   messageId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   data?: Resolver<ResolversTypes['AnalysisData'], ParentType, ContextType>;
+  meta?: Resolver<Maybe<ResolversTypes['MessageMeta']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
+}>;
+
+export type MessageMetaResolvers<ContextType = any, ParentType extends ResolversParentTypes['MessageMeta'] = ResolversParentTypes['MessageMeta']> = ResolversObject<{
+  to?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  from?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  subject?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 }>;
 
@@ -379,6 +399,7 @@ export type Resolvers<ContextType = any> = ResolversObject<{
   TrackingData?: TrackingDataResolvers<ContextType>;
   AnalysisData?: AnalysisDataResolvers;
   Result?: ResultResolvers<ContextType>;
+  MessageMeta?: MessageMetaResolvers<ContextType>;
   ResultsPage?: ResultsPageResolvers<ContextType>;
   MessagePreview?: MessagePreviewResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;

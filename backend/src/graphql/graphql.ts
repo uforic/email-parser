@@ -43,6 +43,15 @@ const Queries: QueryResolvers<ApolloContext> = {
 
         const transformedResults = results
             .map((result) => {
+                let meta = undefined;
+                if (result.message) {
+                    meta = {
+                        from: result.message.from,
+                        to: result.message.to,
+                        subject: result.message.subject,
+                        id: result.message.messageId,
+                    };
+                }
                 const { type } = result;
                 switch (type) {
                     case LINK_ANALYSIS:
@@ -50,6 +59,7 @@ const Queries: QueryResolvers<ApolloContext> = {
                             messageId: result.messageId,
                             id: result.id.toString(),
                             data: { __typename: 'LinkData' as 'LinkData', results: result.data as LinkAnalysisData },
+                            meta,
                         };
                     case TRACKER_ANALYSIS:
                         return {
@@ -59,6 +69,7 @@ const Queries: QueryResolvers<ApolloContext> = {
                                 __typename: 'TrackingData' as 'TrackingData',
                                 results: result.data as TrackerAnalysisData,
                             },
+                            meta,
                         };
                     default:
                         const typeCheck: never = type;

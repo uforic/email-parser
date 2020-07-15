@@ -13,6 +13,8 @@ export const Results = (props: {
                     <th>Message ID</th>
                     <th>Analysis type</th>
                     <th>Analysis summary</th>
+                    <th>From</th>
+                    <th>Subject</th>
                     <th>Preview</th>
                 </tr>
             </thead>
@@ -25,6 +27,8 @@ export const Results = (props: {
                             <td>
                                 <AnalysisSummary analysisType={result.data} />
                             </td>
+                            <td>{result.meta?.from}</td>
+                            <td>{result.meta?.subject?.slice(0, 50)}</td>
                             <td>
                                 <button
                                     onClick={() => props.onClickMessage(result.messageId, getFirstCharPos(result.data))}

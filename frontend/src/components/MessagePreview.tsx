@@ -2,13 +2,15 @@ import { MessagePreview, MessagePreviewVariables } from './__generated__/Message
 import React from 'react';
 import { useQuery, gql } from '@apollo/client';
 
-export const MessagePreviewContainer = (props: { message: { id: string; charPos?: number } | null }) => {
-    const contents =
-        props.message == null ? <div>No message loaded.</div> : <MessagePreviewComponent message={props.message} />;
+export const MessagePreviewContainer = (props: {
+    message: { id: string; charPos?: number };
+    onCloseMessage: () => void;
+}) => {
     return (
         <div style={{ borderLeftWidth: '2px', borderLeftColor: 'black', borderLeftStyle: 'solid', maxWidth: '600px' }}>
+            <button onClick={props.onCloseMessage}>Close preview</button>
             <h2>Message preview</h2>
-            {contents}
+            <MessagePreviewComponent message={props.message} />
         </div>
     );
 };

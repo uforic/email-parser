@@ -19,7 +19,7 @@ const Mailbox = () => {
     const nextPageTokenStr = query.get('nextPageToken');
     const analysisType = query.get('analysisType') || undefined;
     const nextPageToken = nextPageTokenStr ? Number.parseInt(nextPageTokenStr) : undefined;
-    const { loading, data, error } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
+    const { loading, data, error, refetch: refetchStatus } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
         variables: {
             nextPageToken,
             analysisType,
@@ -44,8 +44,11 @@ const Mailbox = () => {
         );
     }
 
-    if (loading || !data) {
+    if (!data) {
         return <div>Loading...</div>;
+    }
+    if (loading) {
+        return <div>Loading new page...</div>;
     }
 
     const onClickMessage = (messageId: string, charPos?: number) => {
@@ -53,7 +56,7 @@ const Mailbox = () => {
     };
     return (
         <div>
-            <SyncStatus data={data.getMailboxSyncStatus} />
+            <SyncStatus data={data.getMailboxSyncStatus} refetchStatus={refetchStatus} />
             <div style={{ display: 'flex' }}>
                 <div>
                     <div>
@@ -115,7 +118,14 @@ const Mailbox = () => {
                         ) : null}
                     </div>
                 </div>
-                <MessagePreviewContainer message={selectedMessage} />
+                {selectedMessage && (
+                    <MessagePreviewContainer
+                        message={selectedMessage}
+                        onCloseMessage={() => {
+                            setSelectedMessage(null);
+                        }}
+                    />
+                )}
             </div>
         </div>
     );
@@ -135,6 +145,11 @@ const QUERY = gql`
             results {
                 id
                 messageId
+                meta {
+                    from
+                    to
+                    subject
+                }
                 data {
                     ... on LinkData {
                         linkResults: results {

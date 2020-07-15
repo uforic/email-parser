@@ -68,6 +68,14 @@ type Result {
     id: ID!
     messageId: String!
     data: AnalysisData!
+    meta: MessageMeta
+}
+
+type MessageMeta {
+    to: String!
+    from: String!
+    subject: String!
+    id: ID!
 }
 
 type ResultsPage {
