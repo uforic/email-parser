@@ -52,13 +52,15 @@ export const listMessages = async (context: GmailContext & Context, userId: stri
             pageToken,
             maxResults: 200,
         });
-    const initialPayload = await enqueue(context.gmailCredentials.userId, initialPayloadPromise);
+    const initialPayload = await prequeue(context.gmailCredentials.userId, initialPayloadPromise);
     return initialPayload.data;
 };
 
 let outgoingCallsByUser: {
     [userId: string]: Array<[() => Promise<any>, (data: any) => void, (error: Error) => void]>;
 } = {};
+
+// creates a promise that doesn't complete until the call has been drained and executed
 const enqueue = async <K>(userId: string, call: () => Promise<K>): Promise<K> => {
     return new Promise<K>((resolve, reject) => {
         const calls = outgoingCallsByUser[userId] || [];
@@ -67,12 +69,21 @@ const enqueue = async <K>(userId: string, call: () => Promise<K>): Promise<K> =>
     });
 };
 
+// like enqueue, but puts it at the beginning of the list
+const prequeue = async <K>(userId: string, call: () => Promise<K>): Promise<K> => {
+    return new Promise<K>((resolve, reject) => {
+        const calls = outgoingCallsByUser[userId] || [];
+        outgoingCallsByUser[userId] = [
+            [call, resolve, reject] as [() => Promise<any>, (data: any) => void, (error: Error) => void],
+        ].concat(calls);
+    });
+};
+
 const drainCalls = () => {
     Object.keys(outgoingCallsByUser).forEach((key) => {
         const outgoingCalls = outgoingCallsByUser[key];
-        const makeCalls = outgoingCalls.slice(0, AMOUNT_PER_INTERVAL);
-        log(createContext(), 'trace', 'draining calls for', key, makeCalls.length);
-        outgoingCallsByUser[key] = outgoingCalls.slice(AMOUNT_PER_INTERVAL);
+        const makeCalls = outgoingCalls.splice(0, AMOUNT_PER_INTERVAL);
+        log(createContext(), 'trace', 'draining calls for', key, makeCalls.length, outgoingCalls.length);
         makeCalls.forEach(([call, resolve, reject]) => {
             call().then(resolve).catch(reject);
         });
@@ -86,11 +97,14 @@ global.setInterval(drainCalls, DRAIN_INTERVAL_MS);
 
 export const getMessage = async (context: GmailContext & Context, userId: string, messageId: string) => {
     const gmailClient = getGmailClient(context);
+
     const fn = () =>
         gmailClient.users.messages.get({
             userId,
             id: messageId,
         });
+
     const response = await enqueue(context.gmailCredentials.userId, fn);
+
     return response.data;
 };

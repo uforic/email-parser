@@ -2,12 +2,11 @@ import { markJobFailed, addJobs, getFreshJobAndMarkInProgress, markJobComplete }
 import { JobType } from '../types';
 import { addCount } from '../stores/counter';
 import { JobStatus } from '../graphql/resolvers';
-import debounce from 'lodash.debounce';
 
 type Job<JobArgs extends {}> = { jobId: number; jobArgs: JobArgs; userId: string; parentId: number | null };
 export class JobExecutor<JobArgs extends {}> {
     maxConcurrentJobs: number;
-    jobFn: (job: Job<JobArgs>) => void;
+    jobFn: (job: Job<JobArgs>) => Promise<void>;
     jobType: JobType;
     currentlyRunningJobs = 0;
     constructor(
@@ -26,10 +25,8 @@ export class JobExecutor<JobArgs extends {}> {
             addCount(parentId, this.jobType, JobStatus.NotStarted, jobArgs.length);
         }
         await addJobs(jobArgs.map((args) => ({ userId, type: this.jobType, jobArgs: args, parentId })));
-        this.processJobs();
     };
-    processJob = async (job: Job<JobArgs>) => {
-        this.currentlyRunningJobs += 1;
+    processJob = async (job: Job<JobArgs>): Promise<void> => {
         const statsId = job.parentId != null ? job.parentId : job.jobId;
         try {
             const startTime = Date.now();
@@ -37,7 +34,7 @@ export class JobExecutor<JobArgs extends {}> {
             await this.jobFn(job);
             addCount(statsId, this.jobType, JobStatus.Completed, 1);
             addCount(statsId, this.jobType, 'timeSpent', Date.now() - startTime);
-            await markJobComplete(job.jobId);
+            markJobComplete(job.jobId);
         } catch (error) {
             addCount(statsId, this.jobType, JobStatus.Failed, 1);
             await markJobFailed(job.jobId);
@@ -45,22 +42,22 @@ export class JobExecutor<JobArgs extends {}> {
         } finally {
             this.currentlyRunningJobs -= 1;
         }
-        this.processJobs();
     };
 
     _processJobs = async () => {
         if (this.maxConcurrentJobs != 0 && this.currentlyRunningJobs >= this.maxConcurrentJobs) {
             return;
         }
+
         const jobsToTake = this.maxConcurrentJobs - this.currentlyRunningJobs;
-        const jobs = await getFreshJobAndMarkInProgress(this.jobType, jobsToTake);
+        const jobs = await getFreshJobAndMarkInProgress<JobArgs>(this.jobType, jobsToTake);
         if (jobs.length == 0) {
             return;
         }
-
+        this.currentlyRunningJobs += jobs.length;
         jobs.forEach((job) => {
             this.processJob({
-                jobArgs: JSON.parse(job.args),
+                jobArgs: job.jobArgs,
                 jobId: job.id,
                 userId: job.userId,
                 parentId: job.parentId,
@@ -68,11 +65,15 @@ export class JobExecutor<JobArgs extends {}> {
         });
     };
 
-    // we debounce this because we call it excessively, but
-    // only need to check for new jobs occasionally
-    processJobs = debounce(this._processJobs, 10);
+    setStuff = () => {
+        return setTimeout(() => {
+            this._processJobs().finally(() => this.setStuff());
+        }, POLL_INTERVAL_MS);
+    };
 
     start = async () => {
-        return await this.processJobs();
+        this.setStuff();
     };
 }
+
+const POLL_INTERVAL_MS = 50;

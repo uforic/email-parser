@@ -217,7 +217,7 @@ export const getMostRecentMailboxSyncJob = async (userId: string) => {
 
 let jobsToMarkComplete: Array<number> = [];
 
-export const markJobComplete = async (jobId: number) => {
+export const markJobComplete = (jobId: number) => {
     jobsToMarkComplete.push(jobId);
     markJobCompleteBatch();
 };
@@ -277,7 +277,7 @@ export const getInitialJobCounts = async (): Promise<Array<{ parentId: number; c
     });
 };
 
-export const getFreshJobAndMarkInProgress = async (jobType: JobType, take: number) => {
+export const getFreshJobAndMarkInProgress = async <K>(jobType: JobType, take: number) => {
     return await prismaClient([JOB_LOCK], 'getFreshJobAndMarkInProgress', async (prismaClient) => {
         const jobs = await prismaClient.job.findMany({
             where: {
@@ -294,7 +294,7 @@ export const getFreshJobAndMarkInProgress = async (jobType: JobType, take: numbe
             },
             data: { status: JobStatus.InProgress, updatedAt: getIntDate() },
         });
-        return jobs;
+        return jobs.map((job) => ({ ...job, jobArgs: JSON.parse(job.args) as K }));
     });
 };
 
