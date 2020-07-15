@@ -98,6 +98,8 @@ yarn build
 ```bash
 cd backend/
 yarn install
+## needed to generate the prisma client to access the db
+yarn prisma-generate
 ## needed to generate the blank sqlite database file
 yarn prisma-up
 ```
