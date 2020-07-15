@@ -45,11 +45,11 @@ const batchDoer = <K>(batchFn: (args: Array<K>) => void) => {
     const debouncedFn = debounce(() => {
         const batch = queue;
         queue = [];
-        batchFn(queue);
+        batchFn(batch);
     }, 10);
     return (args: K) => {
         queue.push(args);
-        debouncedFn;
+        debouncedFn();
     };
 };
 
@@ -231,6 +231,7 @@ const _storeMessageMetaBatch = async (
                 },
             })
         ).map((message) => message.messageId);
+
         const newMessages = messages.filter((message) => !existingMessages.includes(message.messageId));
         if (newMessages.length <= 0) {
             return;

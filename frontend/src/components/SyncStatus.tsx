@@ -61,10 +61,6 @@ export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus; refe
                 After the list message job completes, it may take some time to finish the rest of the jobs (watch
                 counter to see jobs drain).
             </p>
-            <p>
-                Refresh the page to get the latest results. Result ordering is maintained, so once the first page fills,
-                there is no need to refresh anymore.
-            </p>
             <h3>List messages job progress</h3>
             <div>Status: {data.status}</div>
             <div>Start: {format(new Date(data.createdAt * 1000), 'M/dd/yyyy HH:mm')}</div>
