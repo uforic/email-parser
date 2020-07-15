@@ -10,6 +10,12 @@ import { analyzeEmail } from '../cmd/parse_message';
 import { gmail_v1 } from 'googleapis';
 import { homedir } from 'os';
 
+/**
+ * Note: I wrote these first, to facilitate exploring the gmail api.
+ *
+ * However, they are deprecated in favor of running the actualy server.
+ */
+
 program
     .command('auth')
     .description('get the gmail auth url link')

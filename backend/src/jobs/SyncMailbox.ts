@@ -1,14 +1,16 @@
-import { createGmailContext } from '../context';
+import { createGmailAndServerContext } from '../context';
 import { listMessages } from '../clients/gmail';
 import { assertDefined, isDefined } from '../utils';
 import { JobExecutor } from '../jobs/JobExecutor';
 import { SYNC_MAILBOX } from '../types';
 import { DOWNLOAD_MESSAGE_EXECUTOR } from './DownloadMessage';
 
+// iterates through all the pages of a user's gmail, and adds a downloadMessage job for each message
+// that it finds.
 export const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(
     async (job) => {
         let pageCount = 0;
-        const context = await createGmailContext(job.userId);
+        const context = await createGmailAndServerContext(job.userId);
         const processNextPage = async (nextToken: string | undefined) => {
             const { maxPages } = job.jobArgs;
             console.log('PROCESSING PAGE', pageCount);

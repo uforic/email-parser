@@ -6,6 +6,7 @@ import { loadMessage } from '../stores/messageStore';
 import { ANALYZE_MESSAGE } from '../types';
 import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
 
+// analyzes a message, and then stores the analysis results to the database
 export const PROCESS_MESSAGE_EXECUTOR = new JobExecutor<{ messageId: string }>(
     async (job) => {
         const { messageId } = job.jobArgs;

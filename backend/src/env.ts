@@ -30,9 +30,7 @@ const initEnvVars = () => {
         logLevel,
     } as EnvVars;
 };
-const envVars: EnvVars = initEnvVars();
-
-export const getEnvVars = () => envVars;
+export const envVars: EnvVars = initEnvVars();
 
 export const validateEnv = (envVars: EnvVars) => {
     const {

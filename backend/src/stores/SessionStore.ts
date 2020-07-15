@@ -1,7 +1,8 @@
 import { MemoryStore } from 'express-session';
-import { getSavedSession, destroySession, setSavedSession } from './store';
+import { getSavedSession, destroySession, setSavedSession } from './sessions';
 import { EmailSession } from '../types';
 
+// this class exists for express-session, so that we can store user sessions to the database
 export default class SessionStore extends MemoryStore {
     get = (sid: string, callback: (err: any, session?: Express.SessionData | null) => void) => {
         getSavedSession(sid)

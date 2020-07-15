@@ -10,12 +10,11 @@ import { join, resolve } from 'path';
 import { readFileSync } from 'fs';
 import startJobQueues from './jobs/startJobQueues';
 import SessionStore from './stores/SessionStore';
-import { getEnvVars, validateEnv } from './env';
+import { envVars, validateEnv } from './env';
 import { ApolloContext } from './types';
 import { initCounters } from './stores/counter';
 
 // make sure all required env vars are present
-const envVars = getEnvVars();
 console.log('Starting server with environment variables:\n', envVars);
 validateEnv(envVars);
 
@@ -85,6 +84,7 @@ app.get('/oauth2callback', async (req, res, next) => {
                 refreshToken: refresh_token || '',
             },
         };
+        // we kick off a sync when the user logs in for the first time
         syncMailbox(context, context.env.cacheDirectory, {});
     }
     res.redirect(serverContext.env.authSuccessRedirectUrl);
@@ -98,7 +98,9 @@ app.get('/auth/gmail', (_, res) => {
 });
 
 // to develop quickly, you can not specify a frontend asset path,
-// and use the create react app dev server
+// and use the create react app dev server to be the frontend.
+// once you're ready to run this in production, you provide a frontendAssetPath
+// and the nodejs server serves this up
 if (envVars.frontendAssetPath != null) {
     console.log('Serving single page app from: ', envVars.frontendAssetPath);
     app.use('/static', express.static(join(resolve(envVars.frontendAssetPath as string), 'static')));
@@ -106,11 +108,6 @@ if (envVars.frontendAssetPath != null) {
         res.sendFile(join(resolve(envVars.frontendAssetPath as string), 'index.html'));
     });
 }
-
-app.use((err: any, _req: any, _res: any, next: any) => {
-    console.error('Express error', err);
-    next();
-});
 
 const initializeServer = async () => {
     // this resets all in progress jobs to not_started, so that they will retry

@@ -1,6 +1,16 @@
 import { JobType } from '../types';
 import { JobStatus } from '../graphql/resolvers';
 
+/**
+ * To maintain a count of jobs going on for a user,
+ * we store counts of the various states of jobs in this class.
+ *
+ * They are all stored in this variable, keyed by parent job ID
+ * (the highest parent is the "listMessages" parent, all other jobs
+ * derive from this.)
+ */
+const COUNTERS: Record<number, JobCounter> = {};
+
 const INIT_JOB_STATS = {
     [JobStatus.Completed]: 0,
     [JobStatus.Failed]: 0,
@@ -20,10 +30,8 @@ const INIT_SYNC_STATE: () => JobCounter = () => ({
     downloadMessage: { ...INIT_JOB_STATS },
 });
 
-const counter: Record<number, JobCounter> = {};
-
 export const getCounter = (jobId: number): JobCounter | undefined => {
-    const jobCounters = counter[jobId];
+    const jobCounters = COUNTERS[jobId];
     return jobCounters;
 };
 
@@ -34,14 +42,14 @@ export const initCounters = (counters: Array<{ parentId: number; type: JobType; 
 };
 
 export const clearCounter = (jobId: number) => {
-    delete counter[jobId];
+    delete COUNTERS[jobId];
 };
 
 export const addCount = (parentJobId: number, key: JobType, subkey: JobStatus | 'timeSpent', value: number = 1) => {
-    let parentJobGroup = counter[parentJobId];
+    let parentJobGroup = COUNTERS[parentJobId];
     if (!parentJobGroup) {
         parentJobGroup = INIT_SYNC_STATE();
     }
     parentJobGroup[key][subkey] += value;
-    counter[parentJobId] = parentJobGroup;
+    COUNTERS[parentJobId] = parentJobGroup;
 };

@@ -4,6 +4,12 @@ import { join } from 'path';
 import { gmail_v1 } from 'googleapis';
 import { writeFileSync, existsSync } from 'fs';
 
+/**
+ * messageStore handles reading and writing Gmail messages to the message cache.
+ * The program uses disk to cache messages, so that subsequent syncs are faster
+ * and don't use up the API.
+ */
+
 const messagePath = (context: Context, messageId: string) => {
     return join(context.env.cacheDirectory, messageId + '.json');
 };
@@ -28,6 +34,8 @@ export const loadMessage = (context: Context, messageId: string): gmail_v1.Schem
     };
 };
 
+// one of the calls the frontend makes is to preview a message
+// loadMetadata processes a message into parts of interest for the frontend to consume
 export const loadMetadata = (
     message: gmail_v1.Schema$Message & { id: string },
 ): { id: string; subject: string; from: string; to: string; snippet: string } => {

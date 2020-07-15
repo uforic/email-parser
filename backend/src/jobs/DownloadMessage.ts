@@ -1,4 +1,4 @@
-import { createGmailContext } from '../context';
+import { createGmailAndServerContext } from '../context';
 import { getMessage } from '../clients/gmail';
 
 import { JobExecutor } from '../jobs/JobExecutor';
@@ -10,10 +10,12 @@ type DownloadMessageArgs = {
     messageId: string;
 };
 
+// downloads a message if it doesn't exist on disk already, and stores it to disk.
+// the adds the next job (process message)
 export const DOWNLOAD_MESSAGE_EXECUTOR = new JobExecutor<DownloadMessageArgs>(
     async (job) => {
         const { messageId } = job.jobArgs;
-        const context = await createGmailContext(job.userId);
+        const context = await createGmailAndServerContext(job.userId);
         const messageAlreadyDownloaded = await existsMessage(context, messageId);
         if (!messageAlreadyDownloaded) {
             const message = await getMessage(context, job.userId, messageId);
