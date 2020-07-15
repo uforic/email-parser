@@ -74,7 +74,7 @@ To develop the frontend, run:
 
 ```bash
 cd frontend
-# needs to be served at 8080, because in my case the oauth2 redirect url is localhost:8080/oauth2callback.
+# needs to be served at 8080, because in my case the oauth2 redirect url is http://localhost:8080/oauth2callback.
 PORT=8080 yarn start
 ```
 
