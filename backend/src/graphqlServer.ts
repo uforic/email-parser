@@ -10,7 +10,7 @@ import { join, resolve } from 'path';
 import { readFileSync } from 'fs';
 import startJobQueues from './jobs/startJobQueues';
 import SessionStore from './stores/SessionStore';
-import { envVars, validateEnv } from './env';
+import { envVars, validateEnv } from './helpers/env';
 import { ApolloContext } from './types';
 import { initCounters } from './stores/counter';
 

@@ -1,6 +1,6 @@
 import { homedir } from 'os';
 import { join } from 'path';
-import { EnvVars } from './types';
+import { EnvVars } from '../types';
 
 const initEnvVars = () => {
     // gmail related stuff

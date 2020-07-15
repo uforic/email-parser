@@ -1,4 +1,4 @@
-import { envVars } from './env';
+import { envVars } from './helpers/env';
 import { getSavedSessionByUser } from './stores/sessions';
 import { ServerContext, GmailContext } from './types';
 
