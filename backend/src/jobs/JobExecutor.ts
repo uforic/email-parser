@@ -29,6 +29,7 @@ export class JobExecutor<JobArgs extends {}> {
     processJob = async (job: Job<JobArgs>): Promise<void> => {
         const statsId = job.parentId != null ? job.parentId : job.jobId;
         try {
+            this.currentlyRunningJobs += 1;
             const startTime = Date.now();
             addCount(statsId, this.jobType, JobStatus.InProgress, 1);
             await this.jobFn(job);
@@ -54,7 +55,6 @@ export class JobExecutor<JobArgs extends {}> {
         if (jobs.length == 0) {
             return;
         }
-        this.currentlyRunningJobs += jobs.length;
         jobs.forEach((job) => {
             this.processJob({
                 jobArgs: job.jobArgs,
