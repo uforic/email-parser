@@ -2,7 +2,7 @@ import program from 'commander';
 import { generateAuthUrl, getTokens } from '../cmd/generate_auth_url';
 import { checkDriveLink } from '../cmd/check_drive_link';
 import { syncMailbox } from '../cmd/sync_mailbox';
-import { listMessages, getMessage } from '../clients/gmail';
+import { client } from '../clients/gmailRateLimited';
 import { createServerContext } from '../context';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -38,7 +38,7 @@ program
     .action(async ({ token: tokenPath }) => {
         const gmailCredentials = JSON.parse(readFileSync(tokenPath).toString());
         const context = createServerContext();
-        const { messages } = await listMessages({ ...context, gmailCredentials }, 'matt.sprague@gmail.com');
+        const { messages } = await client.listMessages({ ...context, gmailCredentials }, 'matt.sprague@gmail.com');
         console.log('MESSAGES', JSON.stringify(messages));
     });
 
@@ -51,7 +51,7 @@ program
     .action(async ({ token: tokenPath, messageid: messageId, download_path: downloadPath }) => {
         const gmailCredentials = JSON.parse(readFileSync(tokenPath).toString());
         const context = createServerContext();
-        const message = await getMessage({ ...context, gmailCredentials }, 'matt.sprague@gmail.com', messageId);
+        const message = await client.getMessage({ ...context, gmailCredentials }, 'matt.sprague@gmail.com', messageId);
         if (downloadPath) {
             writeFileSync(join(downloadPath, messageId + '.json'), JSON.stringify(message));
         } else {

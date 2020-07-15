@@ -1,5 +1,5 @@
 import { createGmailAndServerContext } from '../context';
-import { getMessage } from '../clients/gmail';
+import { client } from '../clients/gmailRateLimited';
 
 import { JobExecutor } from '../jobs/JobExecutor';
 import { JobType } from '../graphql/__generated__/resolvers';
@@ -18,7 +18,7 @@ export const DOWNLOAD_MESSAGE_EXECUTOR = new JobExecutor<DownloadMessageArgs>(
         const context = await createGmailAndServerContext(job.userId);
         const messageAlreadyDownloaded = await existsMessage(context, messageId);
         if (!messageAlreadyDownloaded) {
-            const message = await getMessage(context, job.userId, messageId);
+            const message = await client.getMessage(context, job.userId, messageId);
             await storeMessage(context, messageId, message);
         }
         await PROCESS_MESSAGE_EXECUTOR.addJobs(job.userId, job.parentId, [{ messageId }]);

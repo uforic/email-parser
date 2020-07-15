@@ -1,5 +1,5 @@
 import { createGmailAndServerContext } from '../context';
-import { listMessages } from '../clients/gmail';
+import { client } from '../clients/gmailRateLimited';
 import { assertDefined, isDefined } from '../helpers/utils';
 import { JobExecutor } from '../jobs/JobExecutor';
 import { JobType } from '../graphql/__generated__/resolvers';
@@ -14,7 +14,11 @@ export const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(
         const processNextPage = async (nextToken: string | undefined) => {
             const { maxPages } = job.jobArgs;
             console.log('PROCESSING PAGE', pageCount);
-            const { messages, nextPageToken } = await listMessages(context, context.gmailCredentials.userId, nextToken);
+            const { messages, nextPageToken } = await client.listMessages(
+                context,
+                context.gmailCredentials.userId,
+                nextToken,
+            );
             assertDefined(messages);
             pageCount += 1;
             const jobs = messages
