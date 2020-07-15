@@ -24,6 +24,7 @@ An email client that downloads all messages in a GMail inbox and performs some b
 -   What is a solid setup for oauth token storage / refreshing? How does it handle different sessions for the same user (ie different browsers)
 -   What is a higher powered database that is easy to package that can handle more load? Or... just postgres?
 -   Profiling in nodejs - I'm curious as to whether the database lock is the main cause of performance issues. I've used YourKit in the past, I know it's possible to connect to node with Chrome, would be curious to check that out.
+-   Patterns for rolling windows on API rate limits: I've read [this one](https://konghq.com/blog/how-to-design-a-scalable-rate-limiting-algorithm/), but I'm curious what is done in the "real world", especially when you get distributed.
 
 ## Assumptions made
 
