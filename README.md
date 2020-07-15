@@ -90,7 +90,16 @@ yarn ts-node src/cli/server.ts
 To build, you need to package the frontend and the backend. There is a shortcut script for this, run from the home directory:
 
 ```bash
-./scripts/build.sh
+cd frontend/
+yarn install
+yarn build
+```
+
+```bash
+cd backend/
+yarn install
+## needed to generate the blank sqlite database file
+yarn prisma-up
 ```
 
 ## Usage
@@ -107,7 +116,7 @@ export GMAIL_REDIRECT_URL="http://localhost:8080/oauth2callback";
 export CACHE_DIRECTORY="/path/to/folder/on/disk";
 # needs to match the port specified on the GMAIL_REDIRECT_URL
 export SERVER_PORT="8080";
-export FRONTEND_ASSET_PATH="./dist/frontend";
-
-node dist/backend/server.js
+export FRONTEND_ASSET_PATH="../frontend/build";
+cd backend/
+node dist/server.js
 ```
