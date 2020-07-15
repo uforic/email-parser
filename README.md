@@ -5,6 +5,7 @@ An email client that downloads all messages in a GMail inbox and performs some b
 ## Features
 
 -   Syncs complete Gmail mailbox, savings the messages to a local cache directory.
+-   Reasonable guarantees around jobs: most jobs are idempotent, and upon server restart, will be retried.
 -   In addition to downloading messages, processes the message for analysis. The two analysis that are done are:
     1.  Unsecured Google Drive and Google Sheets links
     -   visits link, if it's a 200 status OK then it's insecure)
@@ -20,8 +21,8 @@ An email client that downloads all messages in a GMail inbox and performs some b
 
 ## I'd like to learn more about
 
--   What better job servers exist out there for node?
--   What is a solid setup for oauth token storage / refreshing? How does it handle different sessions for the same user (ie different browsers)
+-   What better job server libraries exist out there for node?
+-   What is a solid setup for oauth token storage / refreshing? How does it handle different sessions for the same user (ie different browsers)?
 -   What is a higher powered database that is easy to package that can handle more load? Or... just postgres?
 -   Profiling in nodejs - I'm curious as to whether the database lock is the main cause of performance issues. I've used YourKit in the past, I know it's possible to connect to node with Chrome, would be curious to check that out.
 -   Patterns for rolling windows on API rate limits: I've read [this one](https://konghq.com/blog/how-to-design-a-scalable-rate-limiting-algorithm/), but I'm curious what is done in the "real world", especially when you get distributed.
@@ -122,3 +123,17 @@ export FRONTEND_ASSET_PATH="../frontend/build";
 cd backend/
 node dist/server.js
 ```
+
+## FAQs
+
+### Resetting
+
+To blow away all database data, you can run
+
+```bash
+yarn prisma-reset
+```
+
+### Getting a new token
+
+If your GMail authentication token no longer works, you can visit http://localhost:8080 , and re-login.
