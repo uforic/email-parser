@@ -27,6 +27,12 @@ export const getCounter = (jobId: number): JobCounter | undefined => {
     return jobCounters;
 };
 
+export const initCounters = (counters: Array<{ parentId: number; type: JobType; cnt: number }>) => {
+    counters.forEach((counter) => {
+        addCount(counter.parentId, counter.type, JobStatus.NotStarted, counter.cnt);
+    });
+};
+
 export const clearCounter = (jobId: number) => {
     delete counter[jobId];
 };

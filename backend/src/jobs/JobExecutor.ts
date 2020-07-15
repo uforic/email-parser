@@ -2,6 +2,7 @@ import { markJobFailed, addJobs, getFreshJobAndMarkInProgress, markJobComplete }
 import { JobType } from '../types';
 import { addCount } from '../stores/counter';
 import { JobStatus } from '../graphql/resolvers';
+import debounce from 'lodash.debounce';
 
 type Job<JobArgs extends {}> = { jobId: number; jobArgs: JobArgs; userId: string; parentId: number | null };
 export class JobExecutor<JobArgs extends {}> {
@@ -47,7 +48,7 @@ export class JobExecutor<JobArgs extends {}> {
         this.processJobs();
     };
 
-    processJobs = async () => {
+    _processJobs = async () => {
         if (this.maxConcurrentJobs != 0 && this.currentlyRunningJobs >= this.maxConcurrentJobs) {
             return;
         }
@@ -66,6 +67,10 @@ export class JobExecutor<JobArgs extends {}> {
             });
         });
     };
+
+    // we debounce this because we call it excessively, but
+    // only need to check for new jobs occasionally
+    processJobs = debounce(this._processJobs, 10);
 
     start = async () => {
         return await this.processJobs();

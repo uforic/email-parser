@@ -1,27 +1,51 @@
 import sqlstring from 'sqlstring';
 import { JobStatus } from '../graphql/resolvers';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Session } from '@prisma/client';
 import AsyncLock from 'async-lock';
 import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
-import { LinkAnalysisData, TrackerAnalysisData, SYNC_MAILBOX, JobType } from '../types';
-
-const COMPLETED = JobStatus.Completed;
-const NOT_STARTED = JobStatus.NotStarted;
-const IN_PROGRESS = JobStatus.InProgress;
-const FAILED = JobStatus.Failed;
+import {
+    LinkAnalysisData,
+    TrackerAnalysisData,
+    SYNC_MAILBOX,
+    JobType,
+    ParsedSessionRecord,
+    EmailSession,
+} from '../types';
+import debounce from 'lodash.debounce';
+import { log } from '../utils';
+import { createContext } from '../context';
 
 const _prismaClient = new PrismaClient();
 
 const prismaLock = new AsyncLock({ maxPending: 10000 });
 
+let waitTimeOnLocks = 0;
+let numLockAcquires = 0;
+let currentLocks = 0;
+
 const prismaClient = async <K>(
     lockNames: Array<string>,
+    queryDescription: string,
     fn: (prismaClient: PrismaClient) => Promise<K>,
     skipQueue: boolean = false,
 ) => {
+    const startTime = Date.now();
+    currentLocks++;
     return await prismaLock.acquire(
         lockNames,
         async () => {
+            currentLocks--;
+            numLockAcquires += 1;
+            log(
+                createContext(),
+                'trace',
+                'Lock acquired for',
+                queryDescription,
+                'average wait time per lock:',
+                Math.round(waitTimeOnLocks / numLockAcquires),
+                currentLocks,
+            );
+            waitTimeOnLocks += Date.now() - startTime;
             return await fn(_prismaClient);
         },
         {
@@ -43,10 +67,29 @@ const SESSION_LOCK = 'job';
 
 const getIntDate = () => Math.round(Date.now() / 1000);
 
-export const getSavedSessionByUser = async (userId: string) => {
-    return (
+const _userIdSessionCache: Record<string, ParsedSessionRecord> = {};
+const _sidSessionCache: Record<string, ParsedSessionRecord> = {};
+
+const addToCache = (session: ParsedSessionRecord) => {
+    if (session.userId) {
+        _userIdSessionCache[session.userId] = session;
+    }
+    _sidSessionCache[session.sid] = session;
+};
+
+const parseSession = (session: Session) => {
+    return { ...session, parsedSession: JSON.parse(session.session) as EmailSession };
+};
+
+export const getSavedSessionByUser = async (userId: string): Promise<ParsedSessionRecord> => {
+    if (_userIdSessionCache[userId] != null) {
+        return _userIdSessionCache[userId];
+    }
+
+    const session = (
         await prismaClient(
             [SESSION_LOCK],
+            'getSavedSessionByUser',
             async (prismaClient) => {
                 return await prismaClient.session.findMany({
                     where: {
@@ -58,12 +101,22 @@ export const getSavedSessionByUser = async (userId: string) => {
             true,
         )
     )[0];
+    if (session == null) {
+        return session;
+    }
+    const parsedSession = parseSession(session);
+    addToCache(parsedSession);
+    return parsedSession;
 };
 
-export const getSavedSession = async (sid: string) => {
-    return (
+export const getSavedSession = async (sid: string): Promise<ParsedSessionRecord> => {
+    if (_sidSessionCache[sid]) {
+        return _sidSessionCache[sid];
+    }
+    const session = (
         await prismaClient(
             [SESSION_LOCK],
+            'getSavedSession',
             async (prismaClient) => {
                 return await prismaClient.session.findMany({
                     where: {
@@ -75,11 +128,23 @@ export const getSavedSession = async (sid: string) => {
             true,
         )
     )[0];
+
+    if (session == null) {
+        return session;
+    }
+
+    const parsedSession = parseSession(session);
+    addToCache(parsedSession);
+    return parsedSession;
 };
 
-export const setSavedSession = async (sid: string, session: string, userId?: string | null) => {
+export const setSavedSession = async (sid: string, session: EmailSession, userId: string | null) => {
+    const storageString = JSON.stringify(session);
+    addToCache({ sid, userId, parsedSession: session, session: storageString, id: -1, createdAt: -1 });
+
     return await prismaClient(
         [SESSION_LOCK],
+        'setSavedSession',
         async (prismaClient) => {
             const existingRecords = await prismaClient.session.findMany({
                 where: { sid },
@@ -88,7 +153,7 @@ export const setSavedSession = async (sid: string, session: string, userId?: str
                 return await prismaClient.session.update({
                     where: { id: existingRecords[0].id },
                     data: {
-                        session,
+                        session: storageString,
                         userId,
                     },
                 });
@@ -96,7 +161,7 @@ export const setSavedSession = async (sid: string, session: string, userId?: str
             return await prismaClient.session.create({
                 data: {
                     sid,
-                    session,
+                    session: storageString,
                     createdAt: getIntDate(),
                     userId,
                 },
@@ -107,8 +172,16 @@ export const setSavedSession = async (sid: string, session: string, userId?: str
 };
 
 export const destroySession = async (sid: string) => {
+    const cachedSession = _sidSessionCache[sid];
+    if (cachedSession) {
+        delete _sidSessionCache[sid];
+        if (cachedSession.userId) {
+            delete _userIdSessionCache[cachedSession.userId];
+        }
+    }
     return await prismaClient(
         [SESSION_LOCK],
+        'destroySession',
         async (prismaClient) => {
             return await prismaClient.session.deleteMany({
                 where: {
@@ -124,6 +197,7 @@ export const getMostRecentMailboxSyncJob = async (userId: string) => {
     return (
         await prismaClient(
             [JOB_LOCK],
+            'getMostRecentMailboxSyncJob',
             async (prismaClient) => {
                 return await prismaClient.job.findMany({
                     where: {
@@ -141,56 +215,73 @@ export const getMostRecentMailboxSyncJob = async (userId: string) => {
     )[0];
 };
 
+let jobsToMarkComplete: Array<number> = [];
+
 export const markJobComplete = async (jobId: number) => {
-    await prismaClient([JOB_LOCK], async (prismaClient) => {
-        await prismaClient.job.update({
-            where: { id: jobId },
-            data: { status: COMPLETED, updatedAt: getIntDate() },
+    jobsToMarkComplete.push(jobId);
+    markJobCompleteBatch();
+};
+
+const _markJobCompleteBatch = async () => {
+    await prismaClient([JOB_LOCK], 'markJobComplete', async (prismaClient) => {
+        await prismaClient.job.updateMany({
+            where: { id: { in: jobsToMarkComplete } },
+            data: { status: JobStatus.Completed, updatedAt: getIntDate() },
         });
+        jobsToMarkComplete = [];
     });
 };
+
+const markJobCompleteBatch = debounce(_markJobCompleteBatch, 10);
 
 export const markJobFailed = async (jobId: number) => {
-    await prismaClient([JOB_LOCK], async (prismaClient) => {
+    await prismaClient([JOB_LOCK], 'markJobFailed', async (prismaClient) => {
         return await prismaClient.job.update({
             where: { id: jobId },
-            data: { status: FAILED, updatedAt: getIntDate() },
-        });
-    });
-};
-
-export const markJobInProgress = async (jobId: number) => {
-    await prismaClient([JOB_LOCK], async (prismaClient) => {
-        return await prismaClient.job.update({
-            where: { id: jobId },
-            data: { status: IN_PROGRESS, updatedAt: getIntDate() },
-        });
-    });
-};
-
-export const resetAllJobs = async () => {
-    await prismaClient([JOB_LOCK], async (prismaClient) => {
-        return await prismaClient.job.updateMany({
-            where: { status: IN_PROGRESS },
-            data: { status: JobStatus.NotStarted, updatedAt: getIntDate() },
-        });
-    });
-};
-
-export const clearPendingJobsForUser = async (userId: string, parentJobId: number) => {
-    await prismaClient([JOB_LOCK], async (prismaClient) => {
-        return await prismaClient.job.updateMany({
-            where: { status: { in: [JobStatus.NotStarted] }, userId, parentId: parentJobId },
             data: { status: JobStatus.Failed, updatedAt: getIntDate() },
         });
     });
 };
 
+export const markJobInProgress = async (jobId: number) => {
+    await prismaClient([JOB_LOCK], 'markJobInProgress', async (prismaClient) => {
+        return await prismaClient.job.update({
+            where: { id: jobId },
+            data: { status: JobStatus.InProgress, updatedAt: getIntDate() },
+        });
+    });
+};
+
+export const resetAllJobs = async () => {
+    await prismaClient([JOB_LOCK], 'resetAllJobs', async (prismaClient) => {
+        return await prismaClient.job.updateMany({
+            where: { status: JobStatus.InProgress },
+            data: { status: JobStatus.NotStarted, updatedAt: getIntDate() },
+        });
+    });
+};
+
+export const clearPendingJobsForUser = async (userId: string, parentId: number) => {
+    await prismaClient([JOB_LOCK], 'clearPendingJobsForUser', async (prismaClient) => {
+        return await prismaClient.job.updateMany({
+            where: { status: JobStatus.InProgress, userId, parentId },
+            data: { status: JobStatus.Failed, updatedAt: getIntDate() },
+        });
+    });
+};
+
+const INITIAL_COUNTS_QUERY = `SELECT parentId, type, COUNT(*) as cnt FROM job WHERE status='NOT_STARTED' AND parentId IS NOT NULL GROUP BY parentId, type;`;
+export const getInitialJobCounts = async (): Promise<Array<{ parentId: number; cnt: number; type: JobType }>> => {
+    return await prismaClient([JOB_LOCK], 'getInitialJobCounts', async (prismaClient) => {
+        return await prismaClient.queryRaw(INITIAL_COUNTS_QUERY);
+    });
+};
+
 export const getFreshJobAndMarkInProgress = async (jobType: JobType, take: number) => {
-    return await prismaClient([JOB_LOCK], async (prismaClient) => {
+    return await prismaClient([JOB_LOCK], 'getFreshJobAndMarkInProgress', async (prismaClient) => {
         const jobs = await prismaClient.job.findMany({
             where: {
-                status: NOT_STARTED,
+                status: JobStatus.NotStarted,
                 type: jobType,
             },
             take,
@@ -201,19 +292,19 @@ export const getFreshJobAndMarkInProgress = async (jobType: JobType, take: numbe
                     in: jobs.map((job) => job.id),
                 },
             },
-            data: { status: IN_PROGRESS, updatedAt: getIntDate() },
+            data: { status: JobStatus.InProgress, updatedAt: getIntDate() },
         });
         return jobs;
     });
 };
 
 export const addJobs = async (jobs: Array<{ userId: string; type: JobType; jobArgs: {}; parentId: number | null }>) => {
-    await prismaClient([JOB_LOCK], async (prismaClient) => {
+    await prismaClient([JOB_LOCK], 'addJobs', async (prismaClient) => {
         const createdDate = getIntDate();
         const jobList = jobs
             .map((job) => {
                 return `('${JSON.stringify(job.jobArgs)}', ${sqlstring.escape(job.type)}, ${sqlstring.escape(
-                    NOT_STARTED,
+                    JobStatus.NotStarted,
                 )}, ${sqlstring.escape(job.userId)}, ${createdDate}, ${createdDate}, ${job.parentId})`;
             })
             .join(',');
@@ -229,7 +320,7 @@ export const addJobs = async (jobs: Array<{ userId: string; type: JobType; jobAr
 };
 
 export const storeResult = async (userId: string, messageId: string, type: string, data: {}) => {
-    await prismaClient([RESULT_LOCK], async (prismaClient) => {
+    await prismaClient([RESULT_LOCK], 'storeResult', async (prismaClient) => {
         const previousMessage = (
             await prismaClient.result.findMany({
                 where: {
@@ -266,7 +357,7 @@ export const getPageOfResults = async (
     previousToken: number | undefined = undefined,
     analysisType: string | undefined = undefined,
 ) => {
-    return await prismaClient([RESULT_LOCK], async (prismaClient) => {
+    return await prismaClient([RESULT_LOCK], 'getPageOfResults', async (prismaClient) => {
         const _results = await prismaClient.result.findMany({
             take: pageSize + 1,
             orderBy: {

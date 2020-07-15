@@ -1,17 +1,8 @@
 import { homedir } from 'os';
 import { join } from 'path';
+import { EnvVars } from './types';
 
-export type EnvVars = {
-    gmailClientSecret: string;
-    gmailClientId: string;
-    gmailRedirectUrl: string;
-    cacheDirectory: string;
-    authSuccessRedirectUrl: string;
-    serverPort: number;
-    frontendAssetPath?: string;
-};
-
-export const getEnvVars = () => {
+const initEnvVars = () => {
     // gmail related stuff
     const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET;
     const gmailClientId = process.env.GMAIL_CLIENT_ID;
@@ -26,6 +17,7 @@ export const getEnvVars = () => {
     // without this set, you can run webpack dev server in the frontend folder, and using setupProxy
     // redirect backend queries only (no asset serving queries) to this backed
     const frontendAssetPath = process.env.FRONTEND_ASSET_PATH;
+    const logLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
 
     return {
         gmailClientSecret,
@@ -35,8 +27,12 @@ export const getEnvVars = () => {
         authSuccessRedirectUrl,
         serverPort,
         frontendAssetPath,
+        logLevel,
     } as EnvVars;
 };
+const envVars: EnvVars = initEnvVars();
+
+export const getEnvVars = () => envVars;
 
 export const validateEnv = (envVars: EnvVars) => {
     const {
@@ -46,11 +42,18 @@ export const validateEnv = (envVars: EnvVars) => {
         cacheDirectory,
         authSuccessRedirectUrl,
         serverPort,
+        logLevel,
     } = envVars;
     if (
-        [gmailClientSecret, gmailClientId, gmailRedirectUrl, cacheDirectory, authSuccessRedirectUrl, serverPort].filter(
-            (elem) => !Boolean(elem),
-        ).length > 0
+        [
+            gmailClientSecret,
+            gmailClientId,
+            gmailRedirectUrl,
+            cacheDirectory,
+            authSuccessRedirectUrl,
+            serverPort,
+            logLevel,
+        ].filter((elem) => !Boolean(elem)).length > 0
     ) {
         throw new Error(
             "Can't start server without defining all of [GMAIL_CLIENT_SECRET, GMAIL_CLIENT_ID,GMAIL_REDIRECT_URL, AUTH_SUCCESS_REDIRECT_URL, optional: CACHE_DIRECTORY]",

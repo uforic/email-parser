@@ -1,4 +1,4 @@
-import { GmailContext } from '../context';
+import { GmailContext } from '../types';
 import { existsSync, mkdirSync } from 'fs';
 import { SYNC_MAILBOX_EXECUTOR } from '../jobs/SyncMailbox';
 

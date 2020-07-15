@@ -1,5 +1,15 @@
 import { AssertionError } from 'assert';
 import { gmail_v1 } from 'googleapis';
+import { Context } from './types';
+
+export function log(context: Context, logLevel: 'trace' | 'info', message: string, ...args: any[]) {
+    if (logLevel === 'trace' && context.env.logLevel === 'trace') {
+        console.log(message, ...args);
+    }
+    if (context.env.logLevel === 'info') {
+        console.log(message, ...args);
+    }
+}
 
 export function assertDefined(condition: any): asserts condition {
     if (condition == null) {

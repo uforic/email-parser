@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { Context, GmailContext } from '../context';
+import { Context, GmailContext } from '../types';
 import jwtDecode from 'jwt-decode';
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/userinfo.email'];
@@ -29,7 +29,7 @@ export const getToken = async (context: Context, code: string) => {
     return { access_token: tokens.access_token, userId: decodedIdToken.email, refresh_token: tokens.refresh_token };
 };
 
-const getGmailClient = (context: GmailContext) => {
+const getGmailClient = (context: GmailContext & Context) => {
     const oauth2Client = getOauth2Client(context);
     oauth2Client.setCredentials({
         access_token: context.gmailCredentials.accessToken,
@@ -42,7 +42,7 @@ const getGmailClient = (context: GmailContext) => {
     return gmailClient;
 };
 
-export const listMessages = async (context: GmailContext, userId: string, pageToken?: string) => {
+export const listMessages = async (context: GmailContext & Context, userId: string, pageToken?: string) => {
     const gmailClient = getGmailClient(context);
     const initialPayload = gmailClient.users.messages.list({
         userId: userId,
@@ -53,7 +53,7 @@ export const listMessages = async (context: GmailContext, userId: string, pageTo
     return response.data;
 };
 
-export const getMessage = async (context: GmailContext, userId: string, messageId: string) => {
+export const getMessage = async (context: GmailContext & Context, userId: string, messageId: string) => {
     const gmailClient = getGmailClient(context);
     const response = await gmailClient.users.messages.get({
         userId,

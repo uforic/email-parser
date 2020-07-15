@@ -1,14 +1,13 @@
 import { ForbiddenError } from 'apollo-server-express';
 import { getPageOfResults, getMostRecentMailboxSyncJob, clearPendingJobsForUser } from '../stores/store';
 import { loadMessage, loadMetadata } from '../stores/messageStore';
-import { createGmailContext, createContext } from '../context';
 import { syncMailbox } from '../cmd/sync_mailbox';
 import { getCounter, clearCounter } from '../stores/counter';
 import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
 import { QueryResolvers, JobStatus, MailboxMutationsResolvers } from './resolvers';
 import { isDefined } from '../utils';
 import { getMessagePreview } from '../cmd/get_html_preview';
-import { TrackerAnalysisData, LinkAnalysisData } from '../types';
+import { TrackerAnalysisData, LinkAnalysisData, ApolloContext, GmailContext } from '../types';
 
 export function assertLoggedIn(auth: any): asserts auth {
     if (auth == null) {
@@ -18,12 +17,12 @@ export function assertLoggedIn(auth: any): asserts auth {
 
 const Queries: QueryResolvers<ApolloContext> = {
     getMailboxSyncStatus: async (_parent, _args, context) => {
-        assertLoggedIn(context.auth);
-        const recentSync = await getMostRecentMailboxSyncJob(context.auth.userId);
+        assertLoggedIn(context.gmailCredentials);
+        const recentSync = await getMostRecentMailboxSyncJob(context.gmailCredentials.userId);
         const jobCounter = getCounter(recentSync.id);
         const status = {
             id: recentSync.id.toString(),
-            userId: context.auth.userId,
+            userId: context.gmailCredentials.userId,
             createdAt: recentSync.createdAt,
             updatedAt: recentSync.updatedAt,
             status: recentSync.status as JobStatus,
@@ -32,9 +31,9 @@ const Queries: QueryResolvers<ApolloContext> = {
         return status;
     },
     getResultsPage: async (_parent, args, context) => {
-        assertLoggedIn(context.auth);
+        assertLoggedIn(context.gmailCredentials);
         const { results, nextPageToken } = await getPageOfResults(
-            context.auth.userId,
+            context.gmailCredentials.userId,
             PAGE_SIZE,
             args.token != null ? args.token : undefined,
             args.analysisType != null ? args.analysisType : undefined,
@@ -73,17 +72,16 @@ const Queries: QueryResolvers<ApolloContext> = {
         return returnObj;
     },
     getMailboxSyncStats: async (_parent, args: { jobId: string }, context) => {
-        assertLoggedIn(context.auth);
+        assertLoggedIn(context.gmailCredentials);
         const jobCounters = getCounter(Number.parseInt(args.jobId));
         return jobCounters || null;
     },
     getMessagePreview: async (_parent, args, context) => {
-        assertLoggedIn(context.auth);
-        const serverContext = createContext();
-        const message = await loadMessage(serverContext, args.messageId);
+        assertLoggedIn(context.gmailCredentials);
+        const message = await loadMessage(context, args.messageId);
         let matchPreview;
         if (args.charPos != null && args.charPos >= 0) {
-            matchPreview = getMessagePreview(serverContext, message, args.charPos).matchPreview[0];
+            matchPreview = getMessagePreview(context, message, args.charPos).matchPreview[0];
         }
 
         const metadata = { ...loadMetadata(message), matchPreview };
@@ -92,15 +90,14 @@ const Queries: QueryResolvers<ApolloContext> = {
 };
 
 const Mutations: MailboxMutationsResolvers = {
-    syncMailbox: async (_parent, _args, context) => {
-        assertLoggedIn(context.auth);
-        const gmailContext = await createGmailContext(context.auth.userId);
-        await syncMailbox(gmailContext, gmailContext.env.cacheDirectory, { maxPages: 0 });
+    syncMailbox: async (_parent, _args, context: ApolloContext) => {
+        assertLoggedIn(context.gmailCredentials);
+        await syncMailbox(context as GmailContext, context.env.cacheDirectory, { maxPages: 0 });
         return true;
     },
-    clearJobs: async (_parent, args, context) => {
-        assertLoggedIn(context.auth);
-        clearPendingJobsForUser(context.auth.userId, Number.parseInt(args.parentJobId));
+    clearJobs: async (_parent, args, context: ApolloContext) => {
+        assertLoggedIn(context.gmailCredentials);
+        clearPendingJobsForUser(context.gmailCredentials.userId, Number.parseInt(args.parentJobId));
         clearCounter(Number.parseInt(args.parentJobId));
         return true;
     },
@@ -120,13 +117,4 @@ export const resolvers = {
         },
     },
     Query: Queries,
-};
-
-type Auth = {
-    userId: string;
-    accessToken: string;
-};
-
-export type ApolloContext = {
-    auth?: Auth;
 };

@@ -1,16 +1,18 @@
 import { ApolloServer } from 'apollo-server-express';
 import express, { Request } from 'express';
 import { getOauth2Url, getToken } from './clients/gmail';
-import { createContext, createGmailContext } from './context';
+import { createContext } from './context';
 import session, { MemoryStore } from 'express-session';
-import { resetAllJobs } from './stores/store';
+import { resetAllJobs, getInitialJobCounts } from './stores/store';
 import { syncMailbox } from './cmd/sync_mailbox';
-import { resolvers, ApolloContext } from './graphql/graphql';
+import { resolvers } from './graphql/graphql';
 import { join, resolve } from 'path';
 import { readFileSync } from 'fs';
 import startJobQueues from './jobs/startJobQueues';
 import SessionStore from './stores/SessionStore';
 import { getEnvVars, validateEnv } from './env';
+import { ApolloContext } from './types';
+import { initCounters } from './stores/counter';
 
 // make sure all required env vars are present
 const envVars = getEnvVars();
@@ -31,13 +33,15 @@ const apolloServer = new ApolloServer({
         const { req } = obj;
         if (req?.session?.accessToken && req?.session?.userId) {
             return {
-                auth: {
+                env: envVars,
+                gmailCredentials: {
                     accessToken: req?.session?.accessToken,
                     userId: req?.session?.userId,
+                    refreshToken: req?.session?.refreshToken,
                 },
             };
         }
-        return { auth: undefined };
+        return { env: envVars, gmailCredentials: undefined };
     },
     formatError: (error) => {
         console.error('GraphQL Error: ', error);
@@ -73,7 +77,14 @@ app.get('/oauth2callback', async (req, res, next) => {
         session.accessToken = access_token;
         session.refreshToken = refresh_token;
         session.save(() => {});
-        const context = await createGmailContext(userId);
+        const context = {
+            ...serverContext,
+            gmailCredentials: {
+                userId,
+                accessToken: access_token || '',
+                refreshToken: refresh_token || '',
+            },
+        };
         syncMailbox(context, context.env.cacheDirectory, {});
     }
     res.redirect(serverContext.env.authSuccessRedirectUrl);
@@ -101,9 +112,12 @@ app.use((err: any, _req: any, _res: any, next: any) => {
     next();
 });
 
-const initializeServer = () => {
+const initializeServer = async () => {
     // this resets all in progress jobs to not_started, so that they will retry
     resetAllJobs();
+    // now, we set the counters up so that we can track in flight jobs
+    const initialJobCount = await getInitialJobCounts();
+    initCounters(initialJobCount);
     // the job queues don't poll, so we need to start them when we init
     startJobQueues();
 };

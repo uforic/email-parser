@@ -1,17 +1,6 @@
-import { getEnvVars, EnvVars } from './env';
+import { getEnvVars } from './env';
 import { getSavedSessionByUser } from './stores/store';
-
-export interface Context {
-    env: EnvVars;
-}
-
-export interface GmailContext extends Context {
-    gmailCredentials: {
-        userId: string;
-        accessToken: string;
-        refreshToken: string;
-    };
-}
+import { Auth, Context, GmailContext } from './types';
 
 export const createContext = () => {
     return {
@@ -19,14 +8,12 @@ export const createContext = () => {
     } as Context;
 };
 
-const tokens: Record<string, string> = {};
-
-export const createGmailContext = async (userId: string): Promise<GmailContext> => {
+export const createGmailContext = async (userId: string): Promise<GmailContext & Context> => {
     const session = await getSavedSessionByUser(userId);
     if (!session) {
         throw new Error(`No user session stored for ${userId}`);
     }
-    const { accessToken, refreshToken } = JSON.parse(session.session);
+    const { accessToken, refreshToken } = session.parsedSession;
     return {
         env: getEnvVars(),
         gmailCredentials: {
@@ -34,5 +21,12 @@ export const createGmailContext = async (userId: string): Promise<GmailContext> 
             accessToken,
             refreshToken,
         },
+    } as GmailContext & Context;
+};
+
+export const createGmailContextFromApollo = async (authContext: Auth): Promise<GmailContext> => {
+    return {
+        env: getEnvVars(),
+        gmailCredentials: { ...authContext },
     } as GmailContext;
 };

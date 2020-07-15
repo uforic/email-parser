@@ -37,9 +37,7 @@ An email client that downloads all messages in a GMail inbox and performs some b
 
 -   There is an issue in the HTML DOM parser I'm using; when you pass in a normal looking URL in an `<a>` or `<img>`, some of the GET params get mangled. More on this here: [parse_message](./backend/src/cmd/parse_message.ts#26)
 
--   Between server restarts, the job counts reset - this sometimes results in negative counts (queued - completed - failed goes negative). I stored job counts in memory instead of querying for them each time, because I was trying to minimize SQLite reads.
-
--   Rate limiting on the Gmail API: There is some rate limiting done in the job server, it only allows 25 outgoing requests to Gmail at a time. In a super fast internet environment, it's possible we would exceed the 100 requests per second allowed per user for the Gmail API.
+-   Rate limiting on the Gmail API: There is some rate limiting done in the job server, it only allows 10 outgoing requests to Gmail at a time. In a super fast internet environment, it's possible we would exceed the 100 requests per second allowed per user for the Gmail API.
 
 ## Environment variables guide
 

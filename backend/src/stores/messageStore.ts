@@ -1,4 +1,4 @@
-import { Context } from '../context';
+import { Context } from '../types';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { gmail_v1 } from 'googleapis';

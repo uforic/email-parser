@@ -112,7 +112,7 @@ export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus }) =>
                     })
                 }
             >
-                Clear jobs
+                Clear queued jobs
             </button>
         </div>
     );

@@ -20,17 +20,16 @@ function useUrlQuery() {
 
 const Mailbox = () => {
     const history = useHistory();
-
     const query = useUrlQuery();
     const nextPageTokenStr = query.get('nextPageToken');
-    const nextPageToken = nextPageTokenStr != null ? Number.parseInt(nextPageTokenStr) : undefined;
-    // const [nextPageToken, setNextPageToken] = useState<number | null>(null);
-    const [analysisType, setAnalysisType] = useState<'linkAnalysis' | 'trackerAnalysis' | null>(null);
+    const analysisType = query.get('analysisType') || undefined;
+    const nextPageToken = nextPageTokenStr ? Number.parseInt(nextPageTokenStr) : undefined;
     const { loading, data, error } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
         variables: {
             nextPageToken,
             analysisType,
         },
+        pollInterval: 10000,
     });
     const [selectedMessage, setSelectedMessage] = useState<{ id: string; charPos?: number } | null>(null);
 
@@ -67,16 +66,20 @@ const Mailbox = () => {
                         <div style={{ display: 'flex' }}>
                             <span>Analysis type filter:</span>
                             <select
-                                value={analysisType === null ? 'undefined' : analysisType}
+                                value={analysisType == null ? 'undefined' : analysisType}
                                 name="Analysis type filter"
                                 onChange={(event) => {
-                                    setAnalysisType(
-                                        event.target.value === 'undefined'
-                                            ? null
-                                            : (event.target.value as 'linkAnalysis'),
-                                    );
+                                    const newValue = event.target.value === 'undefined' ? null : event.target.value;
+                                    if (newValue) {
+                                        query.set('analysisType', newValue);
+                                    } else {
+                                        query.delete('analysisType');
+                                    }
+
+                                    query.delete('nextPageToken');
                                     history.push({
                                         pathname: '/mailbox',
+                                        search: query.toString(),
                                     });
                                     setSelectedMessage(null);
                                 }}
@@ -92,8 +95,10 @@ const Mailbox = () => {
                     <div>
                         <button
                             onClick={() => {
+                                query.delete('nextPageToken');
                                 history.push({
                                     pathname: '/mailbox',
+                                    search: query.toString(),
                                 });
                             }}
                         >
@@ -102,9 +107,10 @@ const Mailbox = () => {
                         {data.getResultsPage.nextToken ? (
                             <button
                                 onClick={() => {
+                                    query.set('nextPageToken', data.getResultsPage.nextToken?.toString() as string);
                                     history.push({
                                         pathname: '/mailbox',
-                                        search: `?nextPageToken=${data.getResultsPage.nextToken}`,
+                                        search: query.toString(),
                                     });
                                     setSelectedMessage(null);
                                 }}

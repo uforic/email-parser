@@ -1,6 +1,6 @@
 import { gmail_v1 } from 'googleapis';
 import { parse, HTMLElement } from 'node-html-parser';
-import { Context } from '../context';
+import { Context } from '../types';
 import { isDefined, collectMatches, asyncFilter } from '../utils';
 
 import { URL } from 'url';

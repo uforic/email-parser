@@ -1,5 +1,5 @@
 import { gmail_v1 } from 'googleapis';
-import { Context } from '../context';
+import { Context } from '../types';
 import { collectMatches } from '../utils';
 
 /**
