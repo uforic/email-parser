@@ -18,21 +18,20 @@ You'll need some environment variables set before starting the backend server.
 
 For starters, you'll need some Gmail API tokens (the first 3 variables below). Visit [here](https://developers.google.com/gmail/api/quickstart/nodejs) to generate a token.
 
-```javascript
-// gmail related stuff
-const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET;
-const gmailClientId = process.env.GMAIL_CLIENT_ID;
-const gmailRedirectUrl = process.env.GMAIL_REDIRECT_URL;
-// where do we store the email messages on disk (not stored in DB)
-const cacheDirectory = process.env.CACHE_DIRECTORY || join(homedir(), 'message_cache');
-// once the user successfully oauths, and reaches the callback, where do we redirect to
-const authSuccessRedirectUrl = process.env.AUTH_SUCCESS_REDIRECT_URL || '/mailbox';
-// In development mode, this is 4000. It needs to match the port on GMAIL_REDIRECT_URL
-const serverPort = process.env.SERVER_PORT ? Number.parseInt(process.env.SERVER_PORT) : 4000;
-// when this is set, the server will serve assets from this path, and not depend on a running webpack devserver
-// without this set, you can run webpack dev server in the frontend folder, and using setupProxy
-// redirect backend queries only (no asset serving queries) to this backed
-const frontendAssetPath = process.env.FRONTEND_ASSET_PATH;
+```bash
+## get these from the link above
+export GMAIL_CLIENT_SECRET=""
+export GMAIL_CLIENT_ID=""
+export GMAIL_REDIRECT_URL=""
+## when running the built distribution, make sure to change
+# the server port (default is 4000)
+export SERVER_PORT=8080
+## Only set this variable when running the built distribution with SERVER_PORT=8080
+export FRONTEND_ASSET_PATH="../frontend/build"
+## Where do we download messages to disk? default is ~/message_cache
+export CACHE_DIRECTORY="~/message_cache"
+
+
 ```
 
 ## Developing
@@ -82,7 +81,7 @@ yarn prisma-up
 
 ## Usage
 
-After building, there should be a build at dist/. Run the following command to run the server:
+After building, there should be a build at dist/ in the backend folder. Run the following command to run the server:
 
 ```bash
 # You can get the next 3 Gmail fields from this URL:
@@ -98,6 +97,10 @@ export FRONTEND_ASSET_PATH="../frontend/build";
 cd backend/
 node dist/server.js
 ```
+
+### Note about building and running
+
+I haven't had a chance to dig into it, but the builds produced in backend/dist don't work when run outside of that folder. It's possible they have a dependency on node_modules. Additionally, the Prisma library is harcoded to look for a database at database/dev.db.
 
 ## Assumptions made
 
