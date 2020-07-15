@@ -23,6 +23,6 @@ export const DOWNLOAD_MESSAGE_EXECUTOR = new JobExecutor<DownloadMessageArgs>(
     },
     DOWNLOAD_MESSAGE,
     {
-        maxConcurrentJobs: 10,
+        maxConcurrentJobs: 200,
     },
 );

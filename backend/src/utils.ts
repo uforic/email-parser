@@ -3,10 +3,10 @@ import { gmail_v1 } from 'googleapis';
 import { Context } from './types';
 
 export function log(context: Context, logLevel: 'trace' | 'info', message: string, ...args: any[]) {
-    if (logLevel === 'trace' && context.env.logLevel === 'trace') {
+    if (context.env.logLevel === 'trace') {
         console.log(message, ...args);
     }
-    if (context.env.logLevel === 'info') {
+    if (context.env.logLevel === 'info' && logLevel === 'info') {
         console.log(message, ...args);
     }
 }
