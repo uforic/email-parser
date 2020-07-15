@@ -5,6 +5,7 @@ import { MessagePreviewContainer } from './MessagePreview';
 import { SyncStatus } from './SyncStatus';
 import { useLocation, useHistory } from 'react-router-dom';
 import { Results } from './Results';
+import { AnalysisType } from '../__generated__/globals';
 
 // https://reactrouter.com/web/example/query-parameters
 // A custom hook that builds on useLocation to parse
@@ -17,7 +18,7 @@ const Mailbox = () => {
     const history = useHistory();
     const query = useUrlQuery();
     const nextPageTokenStr = query.get('nextPageToken');
-    const analysisType = query.get('analysisType') || undefined;
+    const analysisType = (query.get('analysisType') as AnalysisType) || undefined;
     const nextPageToken = nextPageTokenStr ? Number.parseInt(nextPageTokenStr) : undefined;
     const { loading, data, error, refetch: refetchStatus } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
         variables: {
@@ -132,7 +133,7 @@ const Mailbox = () => {
 };
 
 const QUERY = gql`
-    query MailboxHome($nextPageToken: Int, $analysisType: String) {
+    query MailboxHome($nextPageToken: Int, $analysisType: AnalysisType) {
         getMailboxSyncStatus {
             id
             userId

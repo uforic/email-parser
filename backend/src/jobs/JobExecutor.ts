@@ -1,7 +1,6 @@
 import { markJobFailed, addJobs, getFreshJobAndMarkInProgress, markJobComplete } from '../stores/store';
-import { JobType } from '../types';
 import { addCount } from '../stores/counter';
-import { JobStatus } from '../graphql/resolvers';
+import { JobStatus, JobType } from '../graphql/__generated__/resolvers';
 
 type Job<JobArgs extends {}> = { jobId: number; jobArgs: JobArgs; userId: string; parentId: number | null };
 export class JobExecutor<JobArgs extends {}> {

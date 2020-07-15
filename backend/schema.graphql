@@ -8,9 +8,9 @@ type MailboxSyncStatus {
 }
 
 type JobCounters {
-    downloadMessage: JobStats!
-    syncMailbox: JobStats!
-    analyzeMessage: JobStats!
+    DOWNLOAD_MESSAGE: JobStats!
+    SYNC_MAILBOX: JobStats!
+    ANALYZE_MESSAGE: JobStats!
 }
 
 type JobStats {
@@ -28,6 +28,19 @@ enum JobStatus {
     NOT_STARTED
     IN_PROGRESS
     FAILED
+}
+
+enum JobType {
+    UNKNOWN
+    DOWNLOAD_MESSAGE
+    ANALYZE_MESSAGE
+    SYNC_MAILBOX
+}
+
+enum AnalysisType {
+    UNKNOWN
+    LINK_ANALYSIS
+    TRACKER_ANALYSIS
 }
 
 type LinkDetection {
@@ -95,7 +108,7 @@ type MessagePreview {
 type Query {
     getMailboxSyncStatus: MailboxSyncStatus!
     getMailboxSyncStats(jobId: ID!): JobCounters
-    getResultsPage(token: Int, analysisType: String): ResultsPage!
+    getResultsPage(token: Int, analysisType: AnalysisType): ResultsPage!
     getMessagePreview(messageId: String!, charPos: Int): MessagePreview
 }
 

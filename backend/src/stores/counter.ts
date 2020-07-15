@@ -1,5 +1,4 @@
-import { JobType } from '../types';
-import { JobStatus } from '../graphql/resolvers';
+import { JobStatus, JobType } from '../graphql/__generated__/resolvers';
 
 /**
  * To maintain a count of jobs going on for a user,
@@ -25,9 +24,10 @@ type JobStats = Record<JobStatus | 'timeSpent', number>;
 type JobCounter = Record<JobType, JobStats>;
 
 const INIT_SYNC_STATE: () => JobCounter = () => ({
-    analyzeMessage: { ...INIT_JOB_STATS },
-    syncMailbox: { ...INIT_JOB_STATS },
-    downloadMessage: { ...INIT_JOB_STATS },
+    [JobType.AnalyzeMessage]: { ...INIT_JOB_STATS },
+    [JobType.SyncMailbox]: { ...INIT_JOB_STATS },
+    [JobType.DownloadMessage]: { ...INIT_JOB_STATS },
+    [JobType.Unknown]: { ...INIT_JOB_STATS },
 });
 
 export const getCounter = (jobId: number): JobCounter | undefined => {

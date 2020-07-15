@@ -1,12 +1,12 @@
 import { google } from 'googleapis';
-import { Context, GmailContext } from '../types';
+import { ServerContext, GmailContext } from '../types';
 import jwtDecode from 'jwt-decode';
-import { log } from '../utils';
-import { createContext } from '../context';
+import { log } from '../helpers/utils';
+import { createServerContext } from '../context';
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/userinfo.email'];
 
-const getOauth2Client = (context: Context) => {
+const getOauth2Client = (context: ServerContext) => {
     const oAuth2Client = new google.auth.OAuth2(
         context.env.gmailClientId,
         context.env.gmailClientSecret,
@@ -15,7 +15,7 @@ const getOauth2Client = (context: Context) => {
     return oAuth2Client;
 };
 
-export const getOauth2Url = (context: Context) => {
+export const getOauth2Url = (context: ServerContext) => {
     const oauth2Client = getOauth2Client(context);
     const authUrl = oauth2Client.generateAuthUrl({
         access_type: 'offline',
@@ -24,14 +24,14 @@ export const getOauth2Url = (context: Context) => {
     return authUrl;
 };
 
-export const getToken = async (context: Context, code: string) => {
+export const getToken = async (context: ServerContext, code: string) => {
     const oauth2Client = getOauth2Client(context);
     const { tokens } = await oauth2Client.getToken(code);
     const decodedIdToken: { email: string } = jwtDecode(tokens.id_token as string);
     return { access_token: tokens.access_token, userId: decodedIdToken.email, refresh_token: tokens.refresh_token };
 };
 
-const getGmailClient = (context: GmailContext & Context) => {
+const getGmailClient = (context: GmailContext & ServerContext) => {
     const oauth2Client = getOauth2Client(context);
     oauth2Client.setCredentials({
         access_token: context.gmailCredentials.accessToken,
@@ -44,7 +44,7 @@ const getGmailClient = (context: GmailContext & Context) => {
     return gmailClient;
 };
 
-export const listMessages = async (context: GmailContext & Context, userId: string, pageToken?: string) => {
+export const listMessages = async (context: GmailContext & ServerContext, userId: string, pageToken?: string) => {
     const gmailClient = getGmailClient(context);
     const initialPayloadPromise = () =>
         gmailClient.users.messages.list({
@@ -83,7 +83,7 @@ const drainCalls = () => {
     Object.keys(outgoingCallsByUser).forEach((key) => {
         const outgoingCalls = outgoingCallsByUser[key];
         const makeCalls = outgoingCalls.splice(0, AMOUNT_PER_INTERVAL);
-        log(createContext(), 'trace', 'draining calls for', key, makeCalls.length, outgoingCalls.length);
+        log(createServerContext(), 'trace', 'draining calls for', key, makeCalls.length, outgoingCalls.length);
         makeCalls.forEach(([call, resolve, reject]) => {
             call().then(resolve).catch(reject);
         });
@@ -95,7 +95,7 @@ const AMOUNT_PER_INTERVAL = 9;
 
 global.setInterval(drainCalls, DRAIN_INTERVAL_MS);
 
-export const getMessage = async (context: GmailContext & Context, userId: string, messageId: string) => {
+export const getMessage = async (context: GmailContext & ServerContext, userId: string, messageId: string) => {
     const gmailClient = getGmailClient(context);
 
     const fn = () =>

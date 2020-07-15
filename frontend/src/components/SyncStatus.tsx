@@ -25,14 +25,16 @@ export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus; refe
     let stats;
     if (_stats != null) {
         stats = {
-            messagedQueuedToDownload: _stats.downloadMessage.NOT_STARTED - _stats.downloadMessage.IN_PROGRESS,
-            messagesDownloaded: _stats.downloadMessage.COMPLETED,
-            messagesDownloadFailed: _stats.downloadMessage.FAILED,
-            messageDownloadTimePerJob: Math.round(_stats.downloadMessage.timeSpent / _stats.downloadMessage.COMPLETED),
-            messagesQueuedToProcess: _stats.analyzeMessage.NOT_STARTED - _stats.analyzeMessage.IN_PROGRESS,
-            messagesProcessed: _stats.analyzeMessage.COMPLETED,
-            messagesProcessedFailed: _stats.analyzeMessage.FAILED,
-            messageProcessedTimeSpent: Math.round(_stats.analyzeMessage.timeSpent / _stats.analyzeMessage.COMPLETED),
+            messagedQueuedToDownload: _stats.DOWNLOAD_MESSAGE.NOT_STARTED - _stats.DOWNLOAD_MESSAGE.IN_PROGRESS,
+            messagesDownloaded: _stats.DOWNLOAD_MESSAGE.COMPLETED,
+            messagesDownloadFailed: _stats.DOWNLOAD_MESSAGE.FAILED,
+            messageDownloadTimePerJob: Math.round(
+                _stats.DOWNLOAD_MESSAGE.timeSpent / _stats.DOWNLOAD_MESSAGE.COMPLETED,
+            ),
+            messagesQueuedToProcess: _stats.ANALYZE_MESSAGE.NOT_STARTED - _stats.ANALYZE_MESSAGE.IN_PROGRESS,
+            messagesProcessed: _stats.ANALYZE_MESSAGE.COMPLETED,
+            messagesProcessedFailed: _stats.ANALYZE_MESSAGE.FAILED,
+            messageProcessedTimeSpent: Math.round(_stats.ANALYZE_MESSAGE.timeSpent / _stats.ANALYZE_MESSAGE.COMPLETED),
         };
     }
 
@@ -127,14 +129,14 @@ export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus; refe
 const STATS_QUERY = gql`
     query MailboxStats($jobId: ID!) {
         getMailboxSyncStats(jobId: $jobId) {
-            downloadMessage {
+            DOWNLOAD_MESSAGE {
                 NOT_STARTED
                 IN_PROGRESS
                 COMPLETED
                 FAILED
                 timeSpent
             }
-            analyzeMessage {
+            ANALYZE_MESSAGE {
                 NOT_STARTED
                 IN_PROGRESS
                 COMPLETED

@@ -3,7 +3,7 @@
 // @generated
 // This file was automatically generated and should not be edited.
 
-import { JobStatus, LinkType, TrackerType } from "./../../__generated__/globals";
+import { AnalysisType, JobStatus, LinkType, TrackerType } from "./../../__generated__/globals";
 
 // ====================================================
 // GraphQL query operation: MailboxHome
@@ -73,5 +73,5 @@ export interface MailboxHome {
 
 export interface MailboxHomeVariables {
   nextPageToken?: number | null;
-  analysisType?: string | null;
+  analysisType?: AnalysisType | null;
 }

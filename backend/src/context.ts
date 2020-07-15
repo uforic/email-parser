@@ -1,14 +1,14 @@
 import { envVars } from './env';
 import { getSavedSessionByUser } from './stores/sessions';
-import { Context, GmailContext } from './types';
+import { ServerContext, GmailContext } from './types';
 
-export const createContext = () => {
+export const createServerContext = () => {
     return {
         env: envVars,
-    } as Context;
+    } as ServerContext;
 };
 
-export const createGmailAndServerContext = async (userId: string): Promise<GmailContext & Context> => {
+export const createGmailAndServerContext = async (userId: string): Promise<GmailContext & ServerContext> => {
     const session = await getSavedSessionByUser(userId);
     if (!session) {
         throw new Error(`No user session stored for ${userId}`);
@@ -21,5 +21,5 @@ export const createGmailAndServerContext = async (userId: string): Promise<Gmail
             accessToken,
             refreshToken,
         },
-    } as GmailContext & Context;
+    } as GmailContext & ServerContext;
 };

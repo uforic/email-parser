@@ -1,12 +1,12 @@
 import { gmail_v1 } from 'googleapis';
 import { parse, HTMLElement } from 'node-html-parser';
-import { Context } from '../types';
-import { isDefined, collectMatches, asyncFilter } from '../utils';
+import { ServerContext } from '../types';
+import { isDefined, collectMatches, asyncFilter } from '../helpers/utils';
 
 import { URL } from 'url';
 import { checkDriveLink as _checkDriveLink } from './check_drive_link';
 import memoize from 'lodash.memoize';
-import { LinkType, TrackerType } from '../graphql/resolvers';
+import { LinkType, TrackerType } from '../graphql/__generated__/resolvers';
 import { DetectedTracker, DetectedLink } from '../types';
 
 // memoize to avoid double requesting the same link twice
@@ -30,7 +30,7 @@ const checkDriveLink = memoize(_checkDriveLink);
  *
  * Todo: Find another library that doesn't mangle URLs
  */
-export const analyzeEmail = async (context: Context, message: gmail_v1.Schema$Message) => {
+export const analyzeEmail = async (context: ServerContext, message: gmail_v1.Schema$Message) => {
     if (!message.payload) {
         return { linkResults: [], trackerResults: [] };
     }

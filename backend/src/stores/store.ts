@@ -2,14 +2,13 @@
 import _sqlstring from 'sqlstring-sqlite';
 import orginalSqlstring from 'sqlstring';
 const sqlstring: typeof orginalSqlstring = _sqlstring;
-import { JobStatus } from '../graphql/resolvers';
+import { JobStatus, AnalysisType, JobType } from '../graphql/__generated__/resolvers';
 import { PrismaClient, Message } from '@prisma/client';
 import AsyncLock from 'async-lock';
-import { LINK_ANALYSIS, TRACKER_ANALYSIS } from '../constants';
-import { LinkAnalysisData, TrackerAnalysisData, SYNC_MAILBOX, JobType } from '../types';
+import { LinkAnalysisData, TrackerAnalysisData } from '../types';
 import debounce from 'lodash.debounce';
-import { log } from '../utils';
-import { createContext } from '../context';
+import { log } from '../helpers/utils';
+import { createServerContext } from '../context';
 
 const _prismaClient = new PrismaClient();
 
@@ -33,7 +32,7 @@ export const prismaClient = async <K>(
             currentLocks--;
             numLockAcquires += 1;
             log(
-                createContext(),
+                createServerContext(),
                 'trace',
                 'Lock acquired for',
                 queryDescription,
@@ -72,7 +71,7 @@ export const getMostRecentMailboxSyncJob = async (userId: string) => {
             async (prismaClient) => {
                 return await prismaClient.job.findMany({
                     where: {
-                        type: SYNC_MAILBOX,
+                        type: JobType.SyncMailbox,
                         userId,
                     },
                     take: 1,
@@ -310,18 +309,18 @@ export const getPageOfResults = async (
 
         const results = _results.map((result) => {
             const foundMessage = messageDict[result.messageId] as Message | undefined;
-            if (result.type === LINK_ANALYSIS) {
+            if (result.type === AnalysisType.LinkAnalysis) {
                 return {
                     ...result,
                     message: foundMessage,
-                    type: result.type as typeof LINK_ANALYSIS,
+                    type: result.type as typeof AnalysisType.LinkAnalysis,
                     data: JSON.parse(result.data) as LinkAnalysisData,
                 };
-            } else if (result.type === TRACKER_ANALYSIS) {
+            } else if (result.type === AnalysisType.TrackerAnalysis) {
                 return {
                     ...result,
                     message: foundMessage,
-                    type: result.type as typeof TRACKER_ANALYSIS,
+                    type: result.type as typeof AnalysisType.TrackerAnalysis,
                     data: JSON.parse(result.data) as TrackerAnalysisData,
                 };
             }

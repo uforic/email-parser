@@ -1,8 +1,8 @@
 import { AssertionError } from 'assert';
 import { gmail_v1 } from 'googleapis';
-import { Context } from './types';
+import { ServerContext } from '../types';
 
-export function log(context: Context, logLevel: 'trace' | 'info', message: string, ...args: any[]) {
+export function log(context: ServerContext, logLevel: 'trace' | 'info', message: string, ...args: any[]) {
     if (context.env.logLevel === 'trace') {
         console.log(message, ...args);
     }

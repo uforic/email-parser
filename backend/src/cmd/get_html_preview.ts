@@ -1,6 +1,6 @@
 import { gmail_v1 } from 'googleapis';
-import { Context } from '../types';
-import { collectMatches } from '../utils';
+import { ServerContext } from '../types';
+import { collectMatches } from '../helpers/utils';
 
 /**
  * Sometimes, the frontend wants to extract a message preview
@@ -13,7 +13,7 @@ import { collectMatches } from '../utils';
  * Future implementation: Figure out how to store the path to a "part",
  * and have the search results store not just charPos, but also "partId".
  */
-export const getMessagePreview = (context: Context, message: gmail_v1.Schema$Message, charPos: number) => {
+export const getMessagePreview = (context: ServerContext, message: gmail_v1.Schema$Message, charPos: number) => {
     if (!message.payload) {
         return { matchPreview: [] };
     }

@@ -7,7 +7,7 @@
 // GraphQL query operation: MailboxStats
 // ====================================================
 
-export interface MailboxStats_getMailboxSyncStats_downloadMessage {
+export interface MailboxStats_getMailboxSyncStats_DOWNLOAD_MESSAGE {
   __typename: "JobStats";
   NOT_STARTED: number;
   IN_PROGRESS: number;
@@ -16,7 +16,7 @@ export interface MailboxStats_getMailboxSyncStats_downloadMessage {
   timeSpent: number;
 }
 
-export interface MailboxStats_getMailboxSyncStats_analyzeMessage {
+export interface MailboxStats_getMailboxSyncStats_ANALYZE_MESSAGE {
   __typename: "JobStats";
   NOT_STARTED: number;
   IN_PROGRESS: number;
@@ -27,8 +27,8 @@ export interface MailboxStats_getMailboxSyncStats_analyzeMessage {
 
 export interface MailboxStats_getMailboxSyncStats {
   __typename: "JobCounters";
-  downloadMessage: MailboxStats_getMailboxSyncStats_downloadMessage;
-  analyzeMessage: MailboxStats_getMailboxSyncStats_analyzeMessage;
+  DOWNLOAD_MESSAGE: MailboxStats_getMailboxSyncStats_DOWNLOAD_MESSAGE;
+  ANALYZE_MESSAGE: MailboxStats_getMailboxSyncStats_ANALYZE_MESSAGE;
 }
 
 export interface MailboxStats {

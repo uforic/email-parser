@@ -1,8 +1,8 @@
 import { createGmailAndServerContext } from '../context';
 import { listMessages } from '../clients/gmail';
-import { assertDefined, isDefined } from '../utils';
+import { assertDefined, isDefined } from '../helpers/utils';
 import { JobExecutor } from '../jobs/JobExecutor';
-import { SYNC_MAILBOX } from '../types';
+import { JobType } from '../graphql/__generated__/resolvers';
 import { DOWNLOAD_MESSAGE_EXECUTOR } from './DownloadMessage';
 
 // iterates through all the pages of a user's gmail, and adds a downloadMessage job for each message
@@ -33,6 +33,6 @@ export const SYNC_MAILBOX_EXECUTOR = new JobExecutor<{ maxPages: number }>(
         };
         await processNextPage(undefined);
     },
-    SYNC_MAILBOX,
+    JobType.SyncMailbox,
     { maxConcurrentJobs: 1 },
 );

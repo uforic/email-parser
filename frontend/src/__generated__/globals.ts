@@ -7,6 +7,12 @@
 // START Enums and Input Objects
 //==============================================================
 
+export enum AnalysisType {
+  LINK_ANALYSIS = "LINK_ANALYSIS",
+  TRACKER_ANALYSIS = "TRACKER_ANALYSIS",
+  UNKNOWN = "UNKNOWN",
+}
+
 export enum JobStatus {
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",

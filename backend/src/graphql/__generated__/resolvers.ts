@@ -24,9 +24,9 @@ export type MailboxSyncStatus = {
 
 export type JobCounters = {
   __typename?: 'JobCounters';
-  downloadMessage: JobStats;
-  syncMailbox: JobStats;
-  analyzeMessage: JobStats;
+  DOWNLOAD_MESSAGE: JobStats;
+  SYNC_MAILBOX: JobStats;
+  ANALYZE_MESSAGE: JobStats;
 };
 
 export type JobStats = {
@@ -45,6 +45,19 @@ export enum JobStatus {
   NotStarted = 'NOT_STARTED',
   InProgress = 'IN_PROGRESS',
   Failed = 'FAILED'
+}
+
+export enum JobType {
+  Unknown = 'UNKNOWN',
+  DownloadMessage = 'DOWNLOAD_MESSAGE',
+  AnalyzeMessage = 'ANALYZE_MESSAGE',
+  SyncMailbox = 'SYNC_MAILBOX'
+}
+
+export enum AnalysisType {
+  Unknown = 'UNKNOWN',
+  LinkAnalysis = 'LINK_ANALYSIS',
+  TrackerAnalysis = 'TRACKER_ANALYSIS'
 }
 
 export type LinkDetection = {
@@ -133,7 +146,7 @@ export type QueryGetMailboxSyncStatsArgs = {
 
 export type QueryGetResultsPageArgs = {
   token?: Maybe<Scalars['Int']>;
-  analysisType?: Maybe<Scalars['String']>;
+  analysisType?: Maybe<AnalysisType>;
 };
 
 
@@ -244,6 +257,8 @@ export type ResolversTypes = ResolversObject<{
   JobCounters: ResolverTypeWrapper<JobCounters>;
   JobStats: ResolverTypeWrapper<JobStats>;
   JobStatus: JobStatus;
+  JobType: JobType;
+  AnalysisType: AnalysisType;
   LinkDetection: ResolverTypeWrapper<LinkDetection>;
   TrackerDetection: ResolverTypeWrapper<TrackerDetection>;
   TrackerType: TrackerType;
@@ -295,9 +310,9 @@ export type MailboxSyncStatusResolvers<ContextType = any, ParentType extends Res
 }>;
 
 export type JobCountersResolvers<ContextType = any, ParentType extends ResolversParentTypes['JobCounters'] = ResolversParentTypes['JobCounters']> = ResolversObject<{
-  downloadMessage?: Resolver<ResolversTypes['JobStats'], ParentType, ContextType>;
-  syncMailbox?: Resolver<ResolversTypes['JobStats'], ParentType, ContextType>;
-  analyzeMessage?: Resolver<ResolversTypes['JobStats'], ParentType, ContextType>;
+  DOWNLOAD_MESSAGE?: Resolver<ResolversTypes['JobStats'], ParentType, ContextType>;
+  SYNC_MAILBOX?: Resolver<ResolversTypes['JobStats'], ParentType, ContextType>;
+  ANALYZE_MESSAGE?: Resolver<ResolversTypes['JobStats'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 }>;
 

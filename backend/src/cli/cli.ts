@@ -3,7 +3,7 @@ import { generateAuthUrl, getTokens } from '../cmd/generate_auth_url';
 import { checkDriveLink } from '../cmd/check_drive_link';
 import { syncMailbox } from '../cmd/sync_mailbox';
 import { listMessages, getMessage } from '../clients/gmail';
-import { createContext } from '../context';
+import { createServerContext } from '../context';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { analyzeEmail } from '../cmd/parse_message';
@@ -37,7 +37,7 @@ program
     .option('-t, --token <token_path>', 'path to token.json file', join(homedir(), 'gmail_token.json'))
     .action(async ({ token: tokenPath }) => {
         const gmailCredentials = JSON.parse(readFileSync(tokenPath).toString());
-        const context = createContext();
+        const context = createServerContext();
         const { messages } = await listMessages({ ...context, gmailCredentials }, 'matt.sprague@gmail.com');
         console.log('MESSAGES', JSON.stringify(messages));
     });
@@ -50,7 +50,7 @@ program
     .requiredOption('-m, --messageid <message_id>', 'message id to look up')
     .action(async ({ token: tokenPath, messageid: messageId, download_path: downloadPath }) => {
         const gmailCredentials = JSON.parse(readFileSync(tokenPath).toString());
-        const context = createContext();
+        const context = createServerContext();
         const message = await getMessage({ ...context, gmailCredentials }, 'matt.sprague@gmail.com', messageId);
         if (downloadPath) {
             writeFileSync(join(downloadPath, messageId + '.json'), JSON.stringify(message));
@@ -64,7 +64,7 @@ program
     .description('process message')
     .requiredOption('-m, --message_path <message_path>', 'where is the message body stored')
     .action(async ({ message_path: messagePath }) => {
-        const context = createContext();
+        const context = createServerContext();
         const message: gmail_v1.Schema$Message = JSON.parse(readFileSync(messagePath).toString());
         const processResults = analyzeEmail(context, message);
         console.log('Message parse results', JSON.stringify(processResults));
@@ -91,7 +91,7 @@ program
     )
     .action(async ({ directory_path: directoryPath, token: tokenPath, max_pages: maxPages }) => {
         const gmailCredentials = JSON.parse(readFileSync(tokenPath).toString());
-        const context = createContext();
+        const context = createServerContext();
         const gmailContext = { ...context, gmailCredentials };
         await syncMailbox(gmailContext, directoryPath, {
             maxPages,

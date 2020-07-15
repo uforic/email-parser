@@ -2,7 +2,7 @@ import { createGmailAndServerContext } from '../context';
 import { getMessage } from '../clients/gmail';
 
 import { JobExecutor } from '../jobs/JobExecutor';
-import { DOWNLOAD_MESSAGE } from '../types';
+import { JobType } from '../graphql/__generated__/resolvers';
 import { PROCESS_MESSAGE_EXECUTOR } from './ProcessMessage';
 import { existsMessage, storeMessage } from '../stores/messageStore';
 
@@ -23,7 +23,7 @@ export const DOWNLOAD_MESSAGE_EXECUTOR = new JobExecutor<DownloadMessageArgs>(
         }
         await PROCESS_MESSAGE_EXECUTOR.addJobs(job.userId, job.parentId, [{ messageId }]);
     },
-    DOWNLOAD_MESSAGE,
+    JobType.DownloadMessage,
     {
         maxConcurrentJobs: 200,
     },

@@ -1,7 +1,7 @@
 import { ApolloServer } from 'apollo-server-express';
 import express, { Request } from 'express';
 import { getOauth2Url, getToken } from './clients/gmail';
-import { createContext } from './context';
+import { createServerContext } from './context';
 import session, { MemoryStore } from 'express-session';
 import { resetAllJobs, getInitialJobCounts } from './stores/store';
 import { syncMailbox } from './cmd/sync_mailbox';
@@ -68,7 +68,7 @@ app.listen({ port: envVars.serverPort }, () =>
 
 app.get('/oauth2callback', async (req, res, next) => {
     const code = req.query.code as string;
-    const serverContext = createContext();
+    const serverContext = createServerContext();
     const { access_token, userId, refresh_token } = await getToken(serverContext, code);
     const session = req.session;
     if (session) {
@@ -92,7 +92,7 @@ app.get('/oauth2callback', async (req, res, next) => {
 });
 
 app.get('/auth/gmail', (_, res) => {
-    const serverContext = createContext();
+    const serverContext = createServerContext();
     const url = getOauth2Url(serverContext);
     res.redirect(url);
 });

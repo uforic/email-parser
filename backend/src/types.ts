@@ -1,15 +1,27 @@
-import { LinkType, TrackerType } from './graphql/resolvers';
+import { LinkType, TrackerType } from './graphql/__generated__/resolvers';
 import { Session } from '@prisma/client';
 
+/**
+ * LinkAnalysisData and TrackerAnalysisData are serialized and stored in the database.
+ */
 export type LinkAnalysisData = Array<DetectedLink>;
 export type TrackerAnalysisData = Array<DetectedTracker>;
 
+/**
+ * DetectedLink represents the type of the link (aka Google Drive, Google Docs),
+ * the href of the link, and the first character position the link appears in the message.
+ */
 export type DetectedLink = {
     type: LinkType;
     href: string;
     firstCharPos: number;
 };
 
+/**
+ * DetectedTracker represents a found tracking link in an email. A type is
+ * the algorithm that triggered (aka ONEBYONE is a 1x1 pixel), and the domain
+ * is just the domain of the href where the <img tag points.
+ */
 export type DetectedTracker = {
     type: TrackerType;
     href: string;
@@ -17,25 +29,19 @@ export type DetectedTracker = {
     domain: string;
 };
 
-export const DOWNLOAD_MESSAGE = 'downloadMessage';
-export const SYNC_MAILBOX = 'syncMailbox';
-export const ANALYZE_MESSAGE = 'analyzeMessage';
-
-export type JobType = typeof DOWNLOAD_MESSAGE | typeof SYNC_MAILBOX | typeof ANALYZE_MESSAGE;
-
-export type Auth = {
+interface GoogleCredentials {
     userId: string;
     accessToken: string;
     refreshToken: string;
-};
+}
 
 export type ApolloContext = {
     env: EnvVars;
-    gmailCredentials?: Auth;
+    gmailCredentials?: GoogleCredentials;
     sid?: string;
 };
 
-export interface Context {
+export interface ServerContext {
     env: EnvVars;
 }
 
@@ -51,11 +57,7 @@ export type EnvVars = {
 };
 
 export interface GmailContext {
-    gmailCredentials: {
-        userId: string;
-        accessToken: string;
-        refreshToken: string;
-    };
+    gmailCredentials: GoogleCredentials;
 }
 
 export interface EmailSession extends Express.SessionData {
