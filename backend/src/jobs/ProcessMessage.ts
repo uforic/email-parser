@@ -14,7 +14,7 @@ export const PROCESS_MESSAGE_EXECUTOR = new JobExecutor<{ messageId: string }>(
         const context = createServerContext();
         const message = loadMessage(context, messageId);
         const messageMeta = loadMetadata(message);
-        storeMessageMeta(messageId, messageMeta.subject, messageMeta.from, messageMeta.to);
+        storeMessageMeta({ messageId, subject: messageMeta.subject, from: messageMeta.from, to: messageMeta.to });
         const results = await analyzeEmail(context, message);
         if (results.linkResults.length > 0) {
             storeResult(job.userId, messageId, AnalysisType.LinkAnalysis, results.linkResults);

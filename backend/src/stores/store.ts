@@ -14,10 +14,51 @@ const _prismaClient = new PrismaClient();
 
 const prismaLock = new AsyncLock({ maxPending: 10000 });
 
+/**
+ * SQLite can't handle multiple concurrent writes,
+ * "SQLite is busy"
+ *
+ * So we need to have a single thread lock on DB access,
+ * even though we can separate writes and reads by table.
+ */
+const JOB_LOCK = 'all_tables';
+const RESULT_LOCK = 'all_tables';
+export const SESSION_LOCK = 'all_tables';
+const MESSAGE_LOCK = 'all_tables';
+
 let waitTimeOnLocks = 0;
 let numLockAcquires = 0;
 let currentLocks = 0;
 
+/**
+ * This helper function creates a queue of args so that
+ * we can perform batch database operations to reduce
+ * the number of queries.
+ *
+ * For certain insert operations, we don't care about them
+ * being performed immediately; we don't need to await them.
+ *
+ * This is for those operations.
+ */
+const batchDoer = <K>(batchFn: (args: Array<K>) => void) => {
+    let queue: Array<K> = [];
+    const debouncedFn = debounce(() => {
+        const batch = queue;
+        queue = [];
+        batchFn(queue);
+    }, 10);
+    return (args: K) => {
+        queue.push(args);
+        debouncedFn;
+    };
+};
+
+/**
+ * Because prisma doesn't limit concurrent SQL connections,
+ * we can do it ourselves, by using a lock library.
+ *
+ * Some operations, especially user facing ones, skip the queue.
+ */
 export const prismaClient = async <K>(
     lockNames: Array<string>,
     queryDescription: string,
@@ -49,18 +90,6 @@ export const prismaClient = async <K>(
     );
 };
 
-/**
- * SQLite can't handle multiple concurrent writes,
- * "SQLite is busy"
- *
- * So we need to have a single thread lock on DB access,
- * even though we can separate writes and reads by table.
- */
-const JOB_LOCK = 'job';
-const RESULT_LOCK = 'job';
-export const SESSION_LOCK = 'job';
-const MESSAGE_LOCk = 'job';
-
 export const getIntDate = () => Math.round(Date.now() / 1000);
 
 export const getMostRecentMailboxSyncJob = async (userId: string) => {
@@ -85,25 +114,16 @@ export const getMostRecentMailboxSyncJob = async (userId: string) => {
     )[0];
 };
 
-let jobsToMarkComplete: Array<number> = [];
-
-export const markJobComplete = (jobId: number) => {
-    jobsToMarkComplete.push(jobId);
-    markJobCompleteBatch();
-};
-
-const _markJobCompleteBatch = async () => {
+const _markJobCompleteBatch = async (args: Array<{ jobId: number }>) => {
     await prismaClient([JOB_LOCK], 'markJobComplete', async (prismaClient) => {
-        const jobsToMark = jobsToMarkComplete;
-        jobsToMarkComplete = [];
         await prismaClient.job.updateMany({
-            where: { id: { in: jobsToMark } },
+            where: { id: { in: args.map((arg) => arg.jobId) } },
             data: { status: JobStatus.Completed, updatedAt: getIntDate() },
         });
     });
 };
 
-const markJobCompleteBatch = debounce(_markJobCompleteBatch, 10);
+export const markJobComplete = batchDoer(_markJobCompleteBatch);
 
 export const markJobFailed = async (jobId: number) => {
     await prismaClient([JOB_LOCK], 'markJobFailed', async (prismaClient) => {
@@ -148,6 +168,12 @@ export const getInitialJobCounts = async (): Promise<Array<{ parentId: number; c
     });
 };
 
+/**
+ * This should be an upsert operation... but you can't use updateMany and take in
+ * the same operation, so we break it into two.
+ *
+ * Because we are only running one db operation at a time, this is OK.
+ */
 export const getFreshJobAndMarkInProgress = async <K>(jobType: JobType, take: number) => {
     return await prismaClient([JOB_LOCK], 'getFreshJobAndMarkInProgress', async (prismaClient) => {
         const jobs = await prismaClient.job.findMany({
@@ -190,22 +216,10 @@ export const addJobs = async (jobs: Array<{ userId: string; type: JobType; jobAr
     });
 };
 
-let messagesToStore: Array<{ messageId: string; subject: string; from: string; to: string }> = [];
-export const storeMessageMeta = async (messageId: string, subject: string, from: string, to: string) => {
-    messagesToStore.push({
-        messageId,
-        subject,
-        from,
-        to,
-    });
-    storeMessageMetaBatch();
-};
-
-const _storeMessageMetaBatch = async () => {
-    await prismaClient([MESSAGE_LOCk], 'storeMessageMetaBatch', async (prismaClient) => {
-        const messages = messagesToStore;
-        messagesToStore = [];
-
+const _storeMessageMetaBatch = async (
+    messages: Array<{ messageId: string; subject: string; to: string; from: string }>,
+) => {
+    await prismaClient([MESSAGE_LOCK], 'storeMessageMetaBatch', async (prismaClient) => {
         const messageIds = messages.map((message) => message.messageId);
         const existingMessages = (
             await prismaClient.message.findMany({
@@ -241,7 +255,8 @@ const _storeMessageMetaBatch = async () => {
         return result;
     });
 };
-const storeMessageMetaBatch = debounce(_storeMessageMetaBatch, 10);
+
+export const storeMessageMeta = batchDoer(_storeMessageMetaBatch);
 
 export const storeResult = async (userId: string, messageId: string, type: string, data: {}) => {
     await prismaClient([RESULT_LOCK], 'storeResult', async (prismaClient) => {

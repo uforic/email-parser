@@ -34,7 +34,7 @@ export class JobExecutor<JobArgs extends {}> {
             await this.jobFn(job);
             addCount(statsId, this.jobType, JobStatus.Completed, 1);
             addCount(statsId, this.jobType, 'timeSpent', Date.now() - startTime);
-            markJobComplete(job.jobId);
+            markJobComplete({ jobId: job.jobId });
         } catch (error) {
             addCount(statsId, this.jobType, JobStatus.Failed, 1);
             await markJobFailed(job.jobId);
