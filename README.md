@@ -23,13 +23,17 @@ For starters, you'll need some Gmail API tokens (the first 3 variables below). V
 export GMAIL_CLIENT_SECRET=""
 export GMAIL_CLIENT_ID=""
 export GMAIL_REDIRECT_URL=""
-## when running the built distribution, make sure to change
-# the server port (default is 4000)
-export SERVER_PORT=8080
-## Only set this variable when running the built distribution with SERVER_PORT=8080
-export FRONTEND_ASSET_PATH="../frontend/build"
 ## Where do we download messages to disk? default is ~/message_cache
 export CACHE_DIRECTORY="~/message_cache"
+
+### Settings to run the built distribution (not development mode)
+## The build distribution serves the built assets for the frontend,
+## and not longer can rely on the frontend development environments
+## setupProxy.ts to forward traffic to port 4000. For development,
+## don't set these.
+export SERVER_PORT=8080
+export FRONTEND_ASSET_PATH="../frontend/build"
+
 ```
 
 ## Developing
