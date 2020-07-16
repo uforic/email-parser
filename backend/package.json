@@ -12,7 +12,6 @@
         "prisma-generate": "prisma generate --schema ./database/schema.prisma",
         "prisma-migrate": "prisma migrate save --experimental --schema database/schema.prisma",
         "prisma-up": "prisma migrate up --experimental --schema database/schema.prisma",
-        "prisma-clean": "rm -rf database/migrations && rm -f database/dev.db && yarn prisma-migrate && yarn prisma-up",
         "prisma-reset": "rm -f database/dev.db && yarn prisma-up",
         "graphql": "graphql-codegen -c codegen.yml"
     },
