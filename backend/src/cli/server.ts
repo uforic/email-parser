@@ -1,1 +1,1 @@
-import '../graphqlServer';
+import '../server';

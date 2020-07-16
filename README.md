@@ -45,15 +45,19 @@ To develop the frontend, run:
 ```bash
 cd frontend
 yarn install
-# needs to be served at 8080, because in my case the oauth2 redirect url is http://localhost:8080/oauth2callback.
-PORT=8080 yarn start
-# now, you should be able to access it at http://localhost:8080
+# default port was changed to 8080 in package.json
+yarn start
+# now, you should be able to access it at http://localhost:8080. API requests are redirected via [setupProxy](./frontend/src/setupProxy.ts) to localhost:4000
 ```
 
 To develop on the backend, run:
 
 ```bash
 cd backend
+yarn install
+## these two prisma commands need to be run once
+yarn prisma-generate
+yarn prisma-up
 # by default, this will serve on port 4000. the frontend's setupProxy.ts will redirect requests here.
 yarn ts-node src/cli/server.ts
 ```
@@ -75,9 +79,9 @@ The backend build produces assets at backed/dist/, and a blank sqlite database f
 ```bash
 cd backend/
 yarn install
-## needed to generate the prisma client to access the db
+## needed to generate the prisma client to access the db (just needs to be called once)
 yarn prisma-generate
-## needed to generate the blank sqlite database file
+## needed to generate the blank sqlite database file (just needs to be called once)
 yarn prisma-up
 ```
 
@@ -85,17 +89,10 @@ yarn prisma-up
 
 Run the following command to run the server:
 
+-   Get your environment variables set up, [see above](#environment-variables-guide)
+
 ```bash
-# You can get the next 3 Gmail fields from this URL:
-export GMAIL_CLIENT_SECRET="";
-export GMAIL_CLIENT_ID="";
-# this is defined at the time you request your Gmail token
-export GMAIL_REDIRECT_URL="http://localhost:8080/oauth2callback";
-# not needed, default is ~/message_cache
-export CACHE_DIRECTORY="/path/to/folder/on/disk";
-# needs to match the port specified on the GMAIL_REDIRECT_URL
-export SERVER_PORT="8080";
-export FRONTEND_ASSET_PATH="../frontend/build";
+source your_env_variables.sh
 cd backend/
 node dist/server.js
 ```
@@ -121,7 +118,7 @@ I haven't had a chance to dig into it, but the builds produced in backend/dist d
 
 -   I didn't build a bulletproof user session store - I persist the Gmail token and refresh token and associate with the user session, but didn't look into token expiration. I started going down the passport js road, but wanted to focus on other things.
 
--   There is an issue in the HTML DOM parser I'm using; when you pass in a normal looking URL in an `<a>` or `<img>`, sometimes the href params come out mangled. More on this here: [parse_message](./backend/src/cmd/parse_message.ts#26). The only user facing issue is that some matches don't have a match preview, because we couldn't find the instance of the URL match in the message body.
+-   There is an issue in the HTML DOM parser I'm using; when you pass in a normal looking URL in an `<a>` or `<img>`, sometimes the href params come out mangled. More on this here: [parse_message](./backend/src/cmd/parse_message.ts#26). The only user facing issue this causes is that some matches don't have a match preview, because we couldn't find the instance of the URL match in the message body.
 
 -   Rate limiting on the Gmail API: I have a meh implementation of a rate limiter for the Gmail API. It looks like we get 250 units per user per second, and a get or list command is 5 units. So 50 operations per second. I perform 10 operations every 200ms per user in the gmail client. A lot not to like about this (jobs held for up to 200ms while they wait, bursty network traffic, etc), but it seems to do the trick.
 

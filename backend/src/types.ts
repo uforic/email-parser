@@ -45,7 +45,7 @@ export interface ServerContext {
     env: EnvVars;
 }
 
-export type EnvVars = {
+export type EnvVars = Readonly<{
     gmailClientSecret: string;
     gmailClientId: string;
     gmailRedirectUrl: string;
@@ -54,7 +54,7 @@ export type EnvVars = {
     serverPort: number;
     frontendAssetPath?: string;
     logLevel: 'info' | 'trace';
-};
+}>;
 
 export interface GmailContext {
     gmailCredentials: GoogleCredentials;
