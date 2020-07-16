@@ -3,20 +3,11 @@
 // @generated
 // This file was automatically generated and should not be edited.
 
-import { AnalysisType, JobStatus, LinkType, TrackerType } from "./../../__generated__/globals";
+import { AnalysisType, LinkType, TrackerType } from "./../../__generated__/globals";
 
 // ====================================================
 // GraphQL query operation: MailboxHome
 // ====================================================
-
-export interface MailboxHome_getMailboxSyncStatus {
-  __typename: "MailboxSyncStatus";
-  id: string;
-  userId: string;
-  updatedAt: number;
-  createdAt: number;
-  status: JobStatus;
-}
 
 export interface MailboxHome_getResultsPage_results_meta {
   __typename: "MessageMeta";
@@ -67,7 +58,6 @@ export interface MailboxHome_getResultsPage {
 }
 
 export interface MailboxHome {
-  getMailboxSyncStatus: MailboxHome_getMailboxSyncStatus;
   getResultsPage: MailboxHome_getResultsPage;
 }
 

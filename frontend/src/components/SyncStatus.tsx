@@ -1,9 +1,8 @@
-import { MailboxHome_getMailboxSyncStatus } from './__generated__/MailboxHome';
 import React from 'react';
 import { useQuery, useMutation, gql } from '@apollo/client';
 import { SyncMailbox } from './__generated__/SyncMailbox';
 import { ClearJobs, ClearJobsVariables } from './__generated__/ClearJobs';
-import { MailboxStats, MailboxStatsVariables } from './__generated__/MailboxStats';
+import { MailboxStats } from './__generated__/MailboxStats';
 import { JobStatus } from '../__generated__/globals';
 import { format } from 'date-fns';
 
@@ -11,17 +10,18 @@ function isDefined<K>(n: K | null | undefined): n is K {
     return n != null;
 }
 
-export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus; refetchStatus: () => void }) => {
-    const { data } = props;
+export const SyncStatus = () => {
     const [syncMailbox, { loading }] = useMutation<SyncMailbox>(SYNC_MAILBOX_MUTATION);
     const [clearJobs] = useMutation<ClearJobs, ClearJobsVariables>(CLEAR_JOBS_MUTATION);
-    const { data: statsData } = useQuery<MailboxStats, MailboxStatsVariables>(STATS_QUERY, {
-        variables: {
-            jobId: data.id,
-        },
+    const { data: statsData, loading: dataLoading } = useQuery<MailboxStats>(STATS_QUERY, {
         pollInterval: 5000,
     });
-    const _stats = statsData?.getMailboxSyncStats;
+
+    if (dataLoading || !statsData?.getMailboxSyncStatus) {
+        return <div>Loading stats...</div>;
+    }
+    const data = statsData.getMailboxSyncStatus;
+    const _stats = statsData?.getMailboxSyncStatus.stats;
     let stats;
     if (_stats != null) {
         stats = {
@@ -101,7 +101,6 @@ export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus; refe
                 disabled={syncButtonDisabled}
                 onClick={() => {
                     syncMailbox();
-                    props.refetchStatus();
                 }}
             >
                 Sync mailbox
@@ -111,7 +110,7 @@ export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus; refe
                 onClick={() =>
                     clearJobs({
                         variables: {
-                            parentJobId: props.data.id,
+                            parentJobId: data.id,
                         },
                     })
                 }
@@ -123,21 +122,28 @@ export const SyncStatus = (props: { data: MailboxHome_getMailboxSyncStatus; refe
 };
 
 const STATS_QUERY = gql`
-    query MailboxStats($jobId: ID!) {
-        getMailboxSyncStats(jobId: $jobId) {
-            DOWNLOAD_MESSAGE {
-                NOT_STARTED
-                IN_PROGRESS
-                COMPLETED
-                FAILED
-                timeSpent
-            }
-            ANALYZE_MESSAGE {
-                NOT_STARTED
-                IN_PROGRESS
-                COMPLETED
-                FAILED
-                timeSpent
+    query MailboxStats {
+        getMailboxSyncStatus {
+            id
+            userId
+            updatedAt
+            createdAt
+            status
+            stats {
+                DOWNLOAD_MESSAGE {
+                    NOT_STARTED
+                    IN_PROGRESS
+                    COMPLETED
+                    FAILED
+                    timeSpent
+                }
+                ANALYZE_MESSAGE {
+                    NOT_STARTED
+                    IN_PROGRESS
+                    COMPLETED
+                    FAILED
+                    timeSpent
+                }
             }
         }
     }

@@ -35,10 +35,9 @@ export CACHE_DIRECTORY="~/message_cache"
 ## Developing
 
 -   Versions of node and yarn are managed with asdf. Check [.tool-versions](./.tool-versions) to get the right versions of these tools.
-
 -   Note: I'm using some node12 features
-
 -   I like to use direnv to manage my environment variables, I keep a file called .envrc in this project root, and it sets all the required variables for me.
+-   You'll need SQLite installed
 
 To develop the frontend, run:
 
@@ -142,3 +141,12 @@ yarn prisma-reset
 ### Getting a new token
 
 If your Gmail authentication token no longer works, you can visit http://localhost:8080 , and re-login. I've noticed this happens after a couple hours of being logged in, and I think more of an investment authentication and refreshing tokens would prevent it.
+
+### Exploring your SQLite database
+
+```bash
+cd backend
+sqlite3
+sqlite> .open database/dev.db
+sqlite> SELECT * FROM message LIMIT 1;
+```

@@ -20,11 +20,12 @@ const Mailbox = () => {
     const nextPageTokenStr = query.get('nextPageToken');
     const analysisType = (query.get('analysisType') as AnalysisType) || undefined;
     const nextPageToken = nextPageTokenStr ? Number.parseInt(nextPageTokenStr) : undefined;
-    const { loading, data, error, refetch: refetchStatus } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
+    const { loading, data, error } = useQuery<MailboxHome, MailboxHomeVariables>(QUERY, {
         variables: {
             nextPageToken,
             analysisType,
         },
+        fetchPolicy: 'cache-and-network',
         pollInterval: 10000,
     });
     const [selectedMessage, setSelectedMessage] = useState<{ id: string; charPos?: number } | null>(null);
@@ -57,7 +58,7 @@ const Mailbox = () => {
     };
     return (
         <div>
-            <SyncStatus data={data.getMailboxSyncStatus} refetchStatus={refetchStatus} />
+            <SyncStatus />
             <div style={{ display: 'flex' }}>
                 <div>
                     <div>
@@ -134,13 +135,6 @@ const Mailbox = () => {
 
 const QUERY = gql`
     query MailboxHome($nextPageToken: Int, $analysisType: AnalysisType) {
-        getMailboxSyncStatus {
-            id
-            userId
-            updatedAt
-            createdAt
-            status
-        }
         getResultsPage(token: $nextPageToken, analysisType: $analysisType) {
             nextToken
             results {

@@ -3,11 +3,13 @@
 // @generated
 // This file was automatically generated and should not be edited.
 
+import { JobStatus } from "./../../__generated__/globals";
+
 // ====================================================
 // GraphQL query operation: MailboxStats
 // ====================================================
 
-export interface MailboxStats_getMailboxSyncStats_DOWNLOAD_MESSAGE {
+export interface MailboxStats_getMailboxSyncStatus_stats_DOWNLOAD_MESSAGE {
   __typename: "JobStats";
   NOT_STARTED: number;
   IN_PROGRESS: number;
@@ -16,7 +18,7 @@ export interface MailboxStats_getMailboxSyncStats_DOWNLOAD_MESSAGE {
   timeSpent: number;
 }
 
-export interface MailboxStats_getMailboxSyncStats_ANALYZE_MESSAGE {
+export interface MailboxStats_getMailboxSyncStatus_stats_ANALYZE_MESSAGE {
   __typename: "JobStats";
   NOT_STARTED: number;
   IN_PROGRESS: number;
@@ -25,16 +27,22 @@ export interface MailboxStats_getMailboxSyncStats_ANALYZE_MESSAGE {
   timeSpent: number;
 }
 
-export interface MailboxStats_getMailboxSyncStats {
+export interface MailboxStats_getMailboxSyncStatus_stats {
   __typename: "JobCounters";
-  DOWNLOAD_MESSAGE: MailboxStats_getMailboxSyncStats_DOWNLOAD_MESSAGE;
-  ANALYZE_MESSAGE: MailboxStats_getMailboxSyncStats_ANALYZE_MESSAGE;
+  DOWNLOAD_MESSAGE: MailboxStats_getMailboxSyncStatus_stats_DOWNLOAD_MESSAGE;
+  ANALYZE_MESSAGE: MailboxStats_getMailboxSyncStatus_stats_ANALYZE_MESSAGE;
+}
+
+export interface MailboxStats_getMailboxSyncStatus {
+  __typename: "MailboxSyncStatus";
+  id: string;
+  userId: string;
+  updatedAt: number;
+  createdAt: number;
+  status: JobStatus;
+  stats: MailboxStats_getMailboxSyncStatus_stats | null;
 }
 
 export interface MailboxStats {
-  getMailboxSyncStats: MailboxStats_getMailboxSyncStats | null;
-}
-
-export interface MailboxStatsVariables {
-  jobId: string;
+  getMailboxSyncStatus: MailboxStats_getMailboxSyncStatus;
 }
