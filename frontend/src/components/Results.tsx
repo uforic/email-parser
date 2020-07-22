@@ -101,8 +101,8 @@ const AnalysisSummary = (props: { analysisType: MailboxHome_getResultsPage_resul
             </ul>
         );
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    analysisType as never;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const foo: never = analysisType;
     return null;
 };
 
@@ -125,15 +125,17 @@ const linkTypeToDisplay = (linkType: LinkType) => {
         return 'Google Docs';
     } else if (linkType === LinkType.GOOGLE_DRIVE) {
         return 'Google Drive';
+    } else if (linkType === LinkType.UNKNOWN) {
+        return 'Unknown';
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    linkType as never;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const foo: never = linkType;
 };
 
 const trackingTypeToDisplay = (trackerType: TrackerType) => {
     if (trackerType === TrackerType.ONEBYONE) {
         return '1x1 pixel';
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    trackerType as never;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const foo: TrackerType.UNKNOWN = trackerType;
 };

@@ -85,29 +85,33 @@ const imageAnalyzer = (linkElement: HTMLElement) => {
 };
 
 // probably an abastraction too soon... but put a link pattern here, to have it start scanning for it
-const linkAnalysisConfigs = [
-    {
+const linkAnalysisConfigs: Record<LinkType, { type: LinkType; urlRegex: RegExp } | undefined> = {
+    [LinkType.GoogleDrive]: {
         type: LinkType.GoogleDrive,
         urlRegex: /https:\/\/drive.google.com\/file\/d\//,
     },
-    {
+    [LinkType.GoogleDocs]: {
         type: LinkType.GoogleDocs,
         urlRegex: /https:\/\/docs.google.com\/document\/d/,
     },
-];
+    [LinkType.Unknown]: undefined,
+};
 
 const parseMessagePartForLinks = collectMatches((messageBody: string) => {
     const rootElement = parse(messageBody);
     const links = rootElement.querySelectorAll('a');
-    const detectedLinks = linkAnalysisConfigs.flatMap((config) =>
-        links
-            .map((link) => linkAnalyzer(config.urlRegex, link))
-            .filter(isDefined)
-            .map(
-                (match) =>
-                    ({ href: match, type: config.type, firstCharPos: messageBody.indexOf(match) } as DetectedLink),
-            ),
-    );
+    const detectedLinks = Object.keys(linkAnalysisConfigs)
+        .map((key: string) => linkAnalysisConfigs[key as LinkType])
+        .filter(isDefined)
+        .flatMap((config) =>
+            links
+                .map((link) => linkAnalyzer(config.urlRegex, link))
+                .filter(isDefined)
+                .map(
+                    (match) =>
+                        ({ href: match, type: config.type, firstCharPos: messageBody.indexOf(match) } as DetectedLink),
+                ),
+        );
     return detectedLinks;
 });
 

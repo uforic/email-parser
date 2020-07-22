@@ -6,7 +6,7 @@ import { JobStatus, AnalysisType, JobType } from '../graphql/__generated__/resol
 import { PrismaClient, Message } from '@prisma/client';
 import AsyncLock from 'async-lock';
 import { LinkAnalysisData, TrackerAnalysisData } from '../types';
-import debounce from 'lodash.debounce';
+import throttle from 'lodash.throttle';
 import { log } from '../helpers/utils';
 import { createServerContext } from '../context';
 
@@ -42,7 +42,7 @@ let currentLocks = 0;
  */
 const batchDoer = <K>(batchFn: (args: Array<K>) => void) => {
     let queue: Array<K> = [];
-    const debouncedFn = debounce(() => {
+    const debouncedFn = throttle(() => {
         const batch = queue;
         queue = [];
         batchFn(batch);
